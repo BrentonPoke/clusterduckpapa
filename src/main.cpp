@@ -26,7 +26,7 @@
 #define DEVICE_ID   ""
 #define DEVICE_TYPE ""
 #define TOKEN       ""
-char server[] = ORG ".messaging.internetofthings.ibmcloud.com";
+char server[] = "";
 char authMethod[] = "use-token-auth";
 char token[] = TOKEN;
 char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;
@@ -150,20 +150,7 @@ int quackJson(std::vector<byte> packetBuffer) {
         Serial.println("[PAPA] Publish ok");
         display->drawString(0, 60, "Publish ok");
         display->sendBuffer();
-    } else {
-        Serial.println("[PAPA] Publish failed");
-        display->drawString(0, 60, "Publish failed");
-        display->sendBuffer();
-        return -1;
-    }
-    serializeMsgPack(doc,msgpck);
-    if (client.publish(msgpackTopic.c_str(), msgpackTopic.c_str())) {
-        Serial.println("[PAPA] Packet forwarded:");
-        serializeMsgPack(doc, Serial);
-        Serial.println("");
-        Serial.println("[PAPA] Publish ok");
-        display->drawString(0, 60, "Publish ok");
-        display->sendBuffer();
+        return 0;
     } else {
         Serial.println("[PAPA] Publish failed");
         display->drawString(0, 60, "Publish failed");
@@ -171,7 +158,6 @@ int quackJson(std::vector<byte> packetBuffer) {
         return -1;
     }
 
-    return 0;
 }
 
 // The callback method simply takes the incoming packet and
