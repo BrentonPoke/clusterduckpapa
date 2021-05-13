@@ -26,7 +26,7 @@
 #define DEVICE_ID   ""
 #define DEVICE_TYPE ""
 #define TOKEN       ""
-char server[] = "";
+char server[] = "10.0.0.54";
 char authMethod[] = "use-token-auth";
 char token[] = TOKEN;
 char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;
@@ -44,7 +44,7 @@ auto timer = timer_create_default();
 std::queue<std::vector<byte>> packetQueue;
 
 WiFiClientSecure wifiClient;
-PubSubClient client(server, 8883, wifiClient);
+PubSubClient client(server, 1883, wifiClient);
 // / DMS locator URL requires a topicString, so we need to convert the topic
 // from the packet to a string based on the topics code
 std::string toTopicString(byte topic) {
