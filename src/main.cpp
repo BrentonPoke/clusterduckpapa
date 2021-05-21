@@ -1,51 +1,98 @@
-#include <Arduino.h>
+#include <CdpPacket.h>
+#include <PapaDuck.h>
+
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
+#include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <arduino-timer.h>
 #include <string>
 
-/* CDP Headers */
-#include <PapaDuck.h>
-#include <CdpPacket.h>
-#include <queue>
-#include <DuckDisplay.h>
-
-#define MQTT_RETRY_DELAY_MS 500
-#define WIFI_RETRY_DELAY_MS 5000
-
-#define SSID "Springdale"
-#define PASSWORD "12345678"
+#define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
+#define LORA_TXPOWER 20 // Transmit Power
+// LORA HELTEC PIN CONFIG
+#define LORA_CS_PIN 18
+#define LORA_DIO0_PIN 26
+#define LORA_DIO1_PIN -1 // unused
+#define LORA_RST_PIN 14
 
 
 
-
-// Used for Mqtt client connection
-// Provided when a Papa Duck device is created in DMS
-#define ORG         ""
-#define DEVICE_ID   ""
-#define DEVICE_TYPE ""
-#define TOKEN       ""
-char server[] = "10.0.0.54";
-char authMethod[] = "use-token-auth";
-char token[] = TOKEN;
-char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;
-
-// Use pre-built papa duck
+// Use pre-built papa duck.
 PapaDuck duck = PapaDuck();
-
 DuckDisplay* display = NULL;
 
-// Set this to false if testing quickstart on IBM IoT Platform
-bool use_auth_method = true;
-
+// create a timer with default settings
 auto timer = timer_create_default();
+char topic[] = "status";
+const char* user = "Springdale";
+const char* pass = "12345678";
+const char* mqtt_server = "10.0.0.54";
+const int MQTT_CONNECTION_DELAY_MS = 5000;
+const int WIFI_CONNECTION_DELAY_MS = 500;
 
-std::queue<std::vector<byte>> packetQueue;
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
 
-WiFiClientSecure wifiClient;
-PubSubClient client(server, 1883, wifiClient);
-// / DMS locator URL requires a topicString, so we need to convert the topic
+
+
+/**
+ * @brief Callback method invoked when a packet was received from the mesh
+ *
+ * @param packet data packet that contains the received message
+ */
+
+
+/**
+ * @brief Establish the connection to the wifi network the Papa Duck can reach
+ *
+ */
+void setup_wifi() {
+    Serial.println();
+    Serial.print("[PAPI] Connecting to ");
+    Serial.println(user);
+    WiFi.begin(user, pass);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(WIFI_CONNECTION_DELAY_MS);
+        Serial.print(".");
+    }
+    Serial.println("");
+    Serial.println("[PAPI] WiFi connected");
+    Serial.println("[PAPI] IP address: ");
+}
+/**
+ * @brief Invoked by the MQTT server when a message has been received
+ */
+void callback(char* topic, byte* message, unsigned int length) {
+    Serial.print("[PAPI] Message arrived on topic: ");
+    Serial.print(topic);
+}
+/**
+ * @brief Periodically attempts to re-establish the MQTT connection
+ *
+ */
+void reconnect() {
+    while (!mqttClient.connected()) {
+        Serial.print("[PAPI] Attempting MQTT connection...");
+        if (mqttClient.connect("ESP32Client")) {
+            Serial.println("[PAPI] connected");
+            mqttClient.subscribe("status");
+        } else {
+            Serial.print("[PAPI] failed, rc=");
+            Serial.println("[PAPI] try again in 5 seconds");
+            delay(MQTT_CONNECTION_DELAY_MS);
+        }
+    }
+}
+void loop() {
+    if (!mqttClient.connected()) {
+        reconnect();
+    }
+    mqttClient.loop();
+    duck.run();
+}
+
+// DMS locator URL requires a topicString, so we need to convert the topic
 // from the packet to a string based on the topics code
 std::string toTopicString(byte topic) {
 
@@ -68,7 +115,7 @@ std::string toTopicString(byte topic) {
             topicString = "gps";
             break;
         case topics::health:
-            topicString ="health";
+            topicString = "health";
             break;
         default:
             topicString = "status";
@@ -89,9 +136,12 @@ String convertToHex(byte* data, int size) {
     return buf;
 }
 
-// WiFi connection retry
-bool retry = true;
-int quackJson(std::vector<byte> packetBuffer) {
+/**
+ * @brief Convert received packet into a JSON object we can send over the MQTT connection
+ *
+ * @param packet A Packet that contains the received message
+ */
+void quackJson(std::vector<byte> packetBuffer) {
 
     CdpPacket packet = CdpPacket(packetBuffer);
     const int bufferSize = 4 * JSON_OBJECT_SIZE(4);
@@ -110,24 +160,29 @@ int quackJson(std::vector<byte> packetBuffer) {
     std::string muid(packet.muid.begin(), packet.muid.end());
     std::string path(packet.path.begin(), packet.path.end());
 
-    Serial.println("[PAPA] Packet Received:");
-    Serial.println("[PAPA] sduid:   " + String(sduid.c_str()));
-    Serial.println("[PAPA] dduid:   " + String(dduid.c_str()));
+    Serial.println("[PAPI] Packet Received:");
+    Serial.println("[PAPI] sduid:   " + String(sduid.c_str()));
+    Serial.println("[PAPI] dduid:   " + String(dduid.c_str()));
+    Serial.println("[PAPI] topic:   " + String(toTopicString(packet.topic).c_str()));
+    Serial.println("[PAPI] muid:    " + String(muid.c_str()));
+    Serial.println("[PAPI] path:    " + String(path.c_str()));
+    Serial.println("[PAPI] data:    " + String(payload.c_str()));
+    Serial.println("[PAPI] hops:    " + String(packet.hopCount));
+    Serial.println("[PAPI] duck:    " + String(packet.duckType));
 
-    Serial.println("[PAPA] muid:    " + String(muid.c_str()));
-    Serial.println("[PAPA] path:    " + String(path.c_str()));
-    Serial.println("[PAPA] data:    " + String(payload.c_str()));
-    Serial.println("[PAPA] hops:    " + String(packet.hopCount));
-    Serial.println("[PAPA] duck:    " + String(packet.duckType));
-
+    std::string cdpTopic = toTopicString(packet.topic);
+    //test of EMS ideas...
+    StaticJsonDocument<200> doc1;
+    std::string needs("{\"geo\":[40.446195,-79.982195],\"G\":\"NB\",\"Needs\":{\"M\":2,\"F\":1,\"W\":3,\"D\":{\"P\":true,\"M\":false}}}");
+    deserializeJson(doc1, needs);
     doc["DeviceID"] = sduid;
     doc["MessageID"] = muid;
     doc["Payload"].set(payload);
     doc["path"].set(path);
     doc["hops"].set(packet.hopCount);
     doc["duckType"].set(packet.duckType);
-
-    std::string cdpTopic = toTopicString(packet.topic);
+    doc["topic"].set(cdpTopic);
+    doc["EMS"].set(doc1);
 
     display->clear();
     display->drawString(0, 10, "New Message");
@@ -136,143 +191,52 @@ int quackJson(std::vector<byte> packetBuffer) {
     display->drawString(0, 40, cdpTopic.c_str());
     display->sendBuffer();
 
-    std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
-    std::string msgpackTopic = "iot-2/evt/" + cdpTopic + "/fmt/msgpack";
-    String msgpck;
+    //std::string cdpTopic = toTopicString(packet.topic);
+    //std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
 
     String jsonstat;
-    serializeJson(doc, jsonstat);
+    serializeMsgPack(doc,jsonstat);
 
-    if (client.publish(topic.c_str(), jsonstat.c_str())) {
-        Serial.println("[PAPA] Packet forwarded:");
+    if (mqttClient.publish(doc["topic"], jsonstat.c_str())) {
+        Serial.println("[PAPIDUCK] Packet forwarded:");
         serializeJsonPretty(doc, Serial);
+        serializeJsonPretty(doc1, Serial);
         Serial.println("");
-        Serial.println("[PAPA] Publish ok");
+        Serial.println("[PAPIDUCK] Publish ok");
         display->drawString(0, 60, "Publish ok");
         display->sendBuffer();
-        return 0;
     } else {
-        Serial.println("[PAPA] Publish failed");
+        Serial.println("[PAPIDUCK] Publish failed");
         display->drawString(0, 60, "Publish failed");
         display->sendBuffer();
-        return -1;
     }
-
 }
 
-// The callback method simply takes the incoming packet and
-// converts it to a JSON string, before sending it out over WiFi
 void handleDuckData(std::vector<byte> packetBuffer) {
-    Serial.println("[PAPA] got packet: " +
+    Serial.println("[PAPI] got packet: " +
                    convertToHex(packetBuffer.data(), packetBuffer.size()));
-    if(quackJson(packetBuffer) == -1) {
-        if(packetQueue.size() > 5) {
-            packetQueue.pop();
-            packetQueue.push(packetBuffer);
-        } else {
-            packetQueue.push(packetBuffer);
-        }
-        Serial.print("New size of queue: ");
-        Serial.println(packetQueue.size());
-    }
+    quackJson(packetBuffer);
 }
-
 void setup() {
-    // We are using a hardcoded device id here, but it should be retrieved or
-    // given during the device provisioning then converted to a byte vector to
-    // setup the duck NOTE: The Device ID must be exactly 8 bytes otherwise it
-    // will get rejected
     std::string deviceId("PAPADUCK");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
-
-    // the default setup is equivalent to the above setup sequence
-    duck.setupWithDefaults(devId, SSID, PASSWORD);
-
     display = DuckDisplay::getInstance();
     // DuckDisplay instance is returned unconditionally, if there is no physical
     // display the functions will not do anything
     display->setupDisplay(duck.getType(), devId);
+    // the default setup is equivalent to the above setup sequence
+// duck.setupSerial(115200);
+    Serial.begin(115200);
+    duck.setupRadio(LORA_FREQ, LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN,
+                    LORA_DIO1_PIN, LORA_TXPOWER);
+    duck.setDeviceId(devId);
 
-    // register a callback to handle incoming data from duck in the network
+
     duck.onReceiveDuckData(handleDuckData);
-
-    Serial.println("[PAPA] Setup OK! ");
-
-    // we are done
+    setup_wifi();
+    mqttClient.setServer(mqtt_server, 1883);
+    mqttClient.setCallback(callback);
+    Serial.print("[PAPI] Setup OK!");
     display->showDefaultScreen();
-}
-
-bool enableRetry(void*) {
-    retry = true;
-    return retry;
-}
-
-void retry_mqtt_connection(int delay_ms) {
-    Serial.println("[PAPA] Could not connect to MQTT...............................");
-    retry = false;
-    timer.in(delay_ms, enableRetry);
-}
-
-
-void publishQueue() {
-    while(!packetQueue.empty()) {
-        if(quackJson(packetQueue.front()) == 0) {
-            packetQueue.pop();
-            Serial.print("Queue size: ");
-            Serial.println(packetQueue.size());
-        } else {
-            return;
-        }
-    }
-}
-
-void setup_mqtt(bool use_auth) {
-    bool connected = client.connected();
-    if (connected) {
-        if(packetQueue.size() > 0) {
-            publishQueue();
-        }
-        return;
-    }
-
-
-    if (use_auth) {
-        connected = client.connect(clientId, authMethod, token);
-    } else {
-        connected = client.connect(clientId);
-    }
-    if (connected) {
-        if(packetQueue.size() > 0) {
-            publishQueue();
-        }
-        Serial.println("[PAPA] Mqtt client is connected!");
-        return;
-    }
-    retry_mqtt_connection(1000);
-
-}
-
-void loop() {
-
-    if (!duck.isWifiConnected() && retry) {
-        String ssid = duck.getSsid();
-        String password = duck.getPassword();
-
-        Serial.println("[PAPA] WiFi disconnected, reconnecting to local network: " +
-                       ssid);
-
-        int err = duck.reconnectWifi(ssid, password);
-
-        if (err != DUCK_ERR_NONE) {
-            retry = false;
-            timer.in(5000, enableRetry);
-        }
-    }
-    if (duck.isWifiConnected() && retry) {
-        setup_mqtt(use_auth_method);
-    }
-
-    duck.run();
-    timer.tick();
 }
