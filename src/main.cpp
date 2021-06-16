@@ -1,13 +1,12 @@
 #include <CdpPacket.h>
 #include <PapaDuck.h>
-
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <arduino-timer.h>
 #include <string>
-
+#include <algorithm>
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
 #define LORA_TXPOWER 20 // Transmit Power
 // LORA HELTEC PIN CONFIG
@@ -144,8 +143,8 @@ String convertToHex(byte* data, int size) {
 void quackJson(std::vector<byte> packetBuffer) {
 
     CdpPacket packet = CdpPacket(packetBuffer);
-    const int bufferSize = 4 * JSON_OBJECT_SIZE(4);
-    StaticJsonDocument<bufferSize> doc;
+    const int bufferSize = 6 * JSON_OBJECT_SIZE(4);
+    DynamicJsonDocument doc(bufferSize);
 
     // Here we treat the internal payload of the CDP packet as a string
     // but this is mostly application dependent.
@@ -172,17 +171,29 @@ void quackJson(std::vector<byte> packetBuffer) {
 
     std::string cdpTopic = toTopicString(packet.topic);
     //test of EMS ideas...
-    StaticJsonDocument<200> doc1;
-    std::string needs("{\"geo\":[40.446195,-79.982195],\"G\":\"NB\",\"Needs\":{\"M\":2,\"F\":1,\"W\":3,\"D\":{\"P\":true,\"M\":false}}}");
-    deserializeJson(doc1, needs);
+
+    DynamicJsonDocument nestdoc(200);
+    JsonObject ems  = nestdoc.createNestedObject("EMS");
+    ems.createNestedArray("geo");
+    JsonObject needs = ems.createNestedObject("Needs");
+    JsonObject disability = needs.createNestedObject("D");
+    ems["G"] = "NB";
+    ems["geo"].add(40.446195);
+    ems["geo"].add(-79.982195);
+    ems["Needs"]["M"] = 2;
+    ems["Needs"]["F"] = 1;
+    ems["Needs"]["W"] = 3;
+    disability["P"] = true;
+    disability["M"] = false;
+
+
     doc["DeviceID"] = sduid;
     doc["MessageID"] = muid;
-    doc["Payload"].set(payload);
+    doc["Payload"] = ems;
     doc["path"].set(path);
     doc["hops"].set(packet.hopCount);
     doc["duckType"].set(packet.duckType);
     doc["topic"].set(cdpTopic);
-    doc["EMS"].set(doc1);
 
     display->clear();
     display->drawString(0, 10, "New Message");
@@ -195,12 +206,12 @@ void quackJson(std::vector<byte> packetBuffer) {
     //std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
 
     String jsonstat;
-    serializeMsgPack(doc,jsonstat);
+    serializeJson(doc,jsonstat);
 
     if (mqttClient.publish(doc["topic"], jsonstat.c_str())) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         serializeJsonPretty(doc, Serial);
-        serializeJsonPretty(doc1, Serial);
+        //serializeJsonPretty(doc1, Serial);
         Serial.println("");
         Serial.println("[PAPIDUCK] Publish ok");
         display->drawString(0, 60, "Publish ok");
