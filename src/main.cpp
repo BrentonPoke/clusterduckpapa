@@ -186,7 +186,6 @@ void quackJson(std::vector<byte> packetBuffer) {
     disability["P"] = true;
     disability["M"] = false;
 
-
     doc["DeviceID"] = sduid;
     doc["MessageID"] = muid;
     doc["Payload"] = ems;
