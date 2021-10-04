@@ -135,6 +135,32 @@ String convertToHex(byte* data, int size) {
     return buf;
 }
 
+double random_d()
+{
+    static bool need_random = true;
+
+    if(need_random)
+    {
+        srand(static_cast<unsigned int>( time(NULL)) );
+        need_random = false;
+    }
+
+    int n = (rand() % 12) + 1;
+    if((rand() % 100) >= 90) n = 1;
+    double a = 0;
+    double b = 0;
+    for(long long i = 0, j = 0; i < n; i++)
+    {
+        j = (rand() % 10);
+        b = b * 10 + j;
+    }
+    std::streamsize input_precision = n;
+    a += (b / std:: pow(10, input_precision));
+
+    if((rand() % 100) >= 60) a = (-a);
+    return a;
+}
+
 /**
  * @brief Convert received packet into a JSON object we can send over the MQTT connection
  *
@@ -172,14 +198,23 @@ void quackJson(std::vector<byte> packetBuffer) {
     std::string cdpTopic = toTopicString(packet.topic);
     //test of EMS ideas...
 
+    double minLat = -90.00;
+    double maxLat = 90.00;
+    double latitude = minLat + rand()%(int)(maxLat - minLat);
+    double minLon = 0.00;
+    double maxLon = 180.00;
+    double longitude = minLon + rand()%((int)(maxLon - minLon) + 1);
+    std::string arr[3] = {"NB","M","W"};
+    std::string gender = arr[rand()%(3)];
+
     DynamicJsonDocument nestdoc(200);
     JsonObject ems  = nestdoc.createNestedObject("EMS");
-    ems.createNestedArray("geo");
+    ems.createNestedObject("Geo");
     JsonObject needs = ems.createNestedObject("Needs");
     JsonObject disability = needs.createNestedObject("D");
-    ems["G"] = "NB";
-    ems["geo"].add(40.446195);
-    ems["geo"].add(-79.982195);
+    ems["G"] = gender;
+    ems["Geo"]["lat"].add(latitude);
+    ems["Geo"]["lon"].add(longitude);
     ems["Needs"]["M"] = 2;
     ems["Needs"]["F"] = 1;
     ems["Needs"]["W"] = 3;
