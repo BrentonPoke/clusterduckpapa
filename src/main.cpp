@@ -213,8 +213,8 @@ void quackJson(std::vector<byte> packetBuffer) {
     JsonObject needs = ems.createNestedObject("Needs");
     JsonObject disability = needs.createNestedObject("D");
     ems["G"] = gender;
-    ems["Geo"]["lat"].add(latitude);
-    ems["Geo"]["lon"].add(longitude);
+    ems["Geo"]["lat"].add(latitude+random_d());
+    ems["Geo"]["lon"].add(longitude+random_d());
     ems["Needs"]["M"] = 2;
     ems["Needs"]["F"] = 1;
     ems["Needs"]["W"] = 3;
