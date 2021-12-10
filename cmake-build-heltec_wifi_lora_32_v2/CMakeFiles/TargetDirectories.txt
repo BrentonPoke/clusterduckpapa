@@ -1,0 +1,5 @@
+/home/brentonpoke/CLionProjects/untitled1/cmake-build-heltec_wifi_lora_32_v2/CMakeFiles/rebuild_cache.dir
+/home/brentonpoke/CLionProjects/untitled1/cmake-build-heltec_wifi_lora_32_v2/CMakeFiles/Production.dir
+/home/brentonpoke/CLionProjects/untitled1/cmake-build-heltec_wifi_lora_32_v2/CMakeFiles/edit_cache.dir
+/home/brentonpoke/CLionProjects/untitled1/cmake-build-heltec_wifi_lora_32_v2/CMakeFiles/Debug.dir
+/home/brentonpoke/CLionProjects/untitled1/cmake-build-heltec_wifi_lora_32_v2/CMakeFiles/Z_DUMMY_TARGET.dir
