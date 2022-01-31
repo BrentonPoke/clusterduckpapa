@@ -18,7 +18,7 @@
 
 
 // Use pre-built papa duck.
-PapaDuck duck = PapaDuck();
+PapaDuck duck;
 DuckDisplay* display = NULL;
 
 // create a timer with default settings
@@ -26,7 +26,7 @@ auto timer = timer_create_default();
 char topic[] = "status";
 const char* user = "Springdale";
 const char* pass = "12345678";
-const char* mqtt_server = "10.0.0.54";
+const char* mqtt_server = "10.0.0.195";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
@@ -198,24 +198,12 @@ void quackJson(std::vector<byte> packetBuffer) {
     std::string cdpTopic = toTopicString(packet.topic);
     //test of EMS ideas...
 
-    double minLat = -90.00;
-    double maxLat = 90.00;
-    double latitude = minLat + rand()%(int)(maxLat - minLat);
-    double minLon = 0.00;
-    double maxLon = 180.00;
-    double longitude = minLon + rand()%((int)(maxLon - minLon) + 1);
-    std::string arr[3] = {"NB","M","W"};
-    std::string gender = arr[rand()%(3)];
-
     DynamicJsonDocument nestdoc(200);
-    JsonObject ems  = nestdoc.createNestedObject("EMS");
-    ems.createNestedObject("Geo");
-    JsonObject needs = ems.createNestedObject("Needs");
-    JsonObject disability = needs.createNestedObject("D");
+    deserializeJson(nestdoc, payload.c_str());
 
     doc["DeviceID"] = sduid;
     doc["MessageID"] = muid;
-    doc["Payload"] = ems;
+    doc["Payload"] = nestdoc;
     doc["path"].set(path);
     doc["hops"].set(packet.hopCount);
     doc["duckType"].set(packet.duckType);
@@ -237,7 +225,6 @@ void quackJson(std::vector<byte> packetBuffer) {
     if (mqttClient.publish(doc["topic"], jsonstat.c_str())) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         serializeJsonPretty(doc, Serial);
-        //serializeJsonPretty(doc1, Serial);
         Serial.println("");
         Serial.println("[PAPIDUCK] Publish ok");
         display->drawString(0, 60, "Publish ok");
