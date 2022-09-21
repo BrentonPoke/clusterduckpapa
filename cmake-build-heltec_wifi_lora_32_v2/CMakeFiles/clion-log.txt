@@ -1,4 +1,0 @@
-/home/brentonpoke/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/213.5744.254/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=heltec_wifi_lora_32_V2 -G "CodeBlocks - Unix Makefiles" /home/brentonpoke/CLionProjects/untitled1
--- Configuring done
--- Generating done
--- Build files have been written to: /home/brentonpoke/CLionProjects/untitled1/cmake-build-heltec_wifi_lora_32_v2
