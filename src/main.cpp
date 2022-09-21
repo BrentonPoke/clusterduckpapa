@@ -7,6 +7,8 @@
 #include <arduino-timer.h>
 #include <string>
 #include <algorithm>
+//#include "unishox2.h"
+
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
 #define LORA_TXPOWER 20 // Transmit Power
 // LORA HELTEC PIN CONFIG
@@ -24,9 +26,9 @@ DuckDisplay* display = NULL;
 // create a timer with default settings
 auto timer = timer_create_default();
 char topic[] = "status";
-const char* user = "Springdale";
+const char* user = "Springdale2.4G";
 const char* pass = "12345678";
-const char* mqtt_server = "10.0.0.195";
+const char* mqtt_server = "10.0.0.54";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
@@ -198,8 +200,12 @@ void quackJson(std::vector<byte> packetBuffer) {
     std::string cdpTopic = toTopicString(packet.topic);
     //test of EMS ideas...
 
-    DynamicJsonDocument nestdoc(200);
-    deserializeJson(nestdoc, payload.c_str());
+    DynamicJsonDocument nestdoc(229);
+    //char decompress[229];
+    Serial.println("Payload: " + String(payload.c_str()));
+    Serial.println("Payload Size: " + String(payload.length()));
+    //unishox2_decompress_simple(payload,int(payload.length()),decompress);
+    deserializeJson(nestdoc, payload);
 
     doc["DeviceID"] = sduid;
     doc["MessageID"] = muid;
@@ -250,7 +256,7 @@ void setup() {
     // display the functions will not do anything
     display->setupDisplay(duck.getType(), devId);
     // the default setup is equivalent to the above setup sequence
-// duck.setupSerial(115200);
+    duck.setupSerial(115200);
     Serial.begin(115200);
     duck.setupRadio(LORA_FREQ, LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN,
                     LORA_DIO1_PIN, LORA_TXPOWER);
