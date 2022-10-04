@@ -3,7 +3,6 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
 #include <arduino-timer.h>
 #include <string>
 #include <algorithm>
@@ -125,7 +124,7 @@ std::string toTopicString(byte topic) {
     return topicString;
 }
 
-String convertToHex(byte* data, int size) {
+String convertToHex(byte* data, unsigned int size) {
     String buf = "";
     buf.reserve(size * 2); // 2 digit hex
     const char* cs = "0123456789ABCDEF";
@@ -168,10 +167,10 @@ double random_d()
  *
  * @param packet A Packet that contains the received message
  */
-void quackJson(std::vector<byte> packetBuffer) {
-
+void quackJson(const std::vector<byte>& packetBuffer) {
+    auto start = millis();
     CdpPacket packet = CdpPacket(packetBuffer);
-    const int bufferSize = 6 * JSON_OBJECT_SIZE(4);
+    const int bufferSize = 6 * JSON_OBJECT_SIZE(5);
     DynamicJsonDocument doc(bufferSize);
 
     // Here we treat the internal payload of the CDP packet as a string
@@ -185,16 +184,13 @@ void quackJson(std::vector<byte> packetBuffer) {
     std::string dduid(packet.dduid.begin(), packet.dduid.end());
 
     std::string muid(packet.muid.begin(), packet.muid.end());
-    std::string path(packet.path.begin(), packet.path.end());
 
     Serial.println("[PAPI] Packet Received:");
     Serial.println("[PAPI] sduid:   " + String(sduid.c_str()));
     Serial.println("[PAPI] dduid:   " + String(dduid.c_str()));
     Serial.println("[PAPI] topic:   " + String(toTopicString(packet.topic).c_str()));
     Serial.println("[PAPI] muid:    " + String(muid.c_str()));
-    Serial.println("[PAPI] path:    " + String(path.c_str()));
     Serial.println("[PAPI] data:    " + String(payload.c_str()));
-    Serial.println("[PAPI] hops:    " + String(packet.hopCount));
     Serial.println("[PAPI] duck:    " + String(packet.duckType));
 
     std::string cdpTopic = toTopicString(packet.topic);
@@ -203,15 +199,14 @@ void quackJson(std::vector<byte> packetBuffer) {
     DynamicJsonDocument nestdoc(229);
     //char decompress[229];
     Serial.println("Payload: " + String(payload.c_str()));
-    Serial.println("Payload Size: " + String(payload.length()));
+    printf("Payload Size: %d", payload.size());
     //unishox2_decompress_simple(payload,int(payload.length()),decompress);
     deserializeJson(nestdoc, payload);
-
+    auto currentMillis = millis() - start;
     doc["DeviceID"] = sduid;
     doc["MessageID"] = muid;
     doc["Payload"] = nestdoc;
-    doc["path"].set(path);
-    doc["hops"].set(packet.hopCount);
+    doc["TXTime"] = (long(nestdoc["GPS"]["time"]) + long(currentMillis)) - long(nestdoc["GPS"]["time"]);
     doc["duckType"].set(packet.duckType);
     doc["topic"].set(cdpTopic);
 
