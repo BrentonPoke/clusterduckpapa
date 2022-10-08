@@ -24,7 +24,6 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-char topic[] = "status";
 const char* user = "Springdale2.4G";
 const char* pass = "12345678";
 const char* mqtt_server = "10.0.0.54";
@@ -203,12 +202,12 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     //unishox2_decompress_simple(payload,int(payload.length()),decompress);
     deserializeJson(nestdoc, payload);
     auto currentMillis = millis() - start;
-    doc["DeviceID"] = sduid;
+    doc["DeviceID"] = nestdoc["Device"];
     doc["MessageID"] = muid;
     doc["Payload"] = nestdoc;
     doc["TXTime"] = (long(nestdoc["GPS"]["time"]) + long(currentMillis)) - long(nestdoc["GPS"]["time"]);
     doc["duckType"].set(packet.duckType);
-    doc["topic"].set(cdpTopic);
+    doc["topic"].set(nestdoc["Device"]);
 
     display->clear();
     display->drawString(0, 10, "New Message");
