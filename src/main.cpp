@@ -117,7 +117,7 @@ std::string toTopicString(byte topic) {
             topicString = "health";
             break;
         default:
-            topicString = "status";
+            topicString = "TTGO";
     }
 
     return topicString;
@@ -133,32 +133,6 @@ String convertToHex(byte* data, unsigned int size) {
         buf += cs[val & 0x0F];
     }
     return buf;
-}
-
-double random_d()
-{
-    static bool need_random = true;
-
-    if(need_random)
-    {
-        srand(static_cast<unsigned int>( time(NULL)) );
-        need_random = false;
-    }
-
-    int n = (rand() % 12) + 1;
-    if((rand() % 100) >= 90) n = 1;
-    double a = 0;
-    double b = 0;
-    for(long long i = 0, j = 0; i < n; i++)
-    {
-        j = (rand() % 10);
-        b = b * 10 + j;
-    }
-    std::streamsize input_precision = n;
-    a += (b / std:: pow(10, input_precision));
-
-    if((rand() % 100) >= 60) a = (-a);
-    return a;
 }
 
 /**
@@ -193,6 +167,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     Serial.println("[PAPI] duck:    " + String(packet.duckType));
 
     std::string cdpTopic = toTopicString(packet.topic);
+
     //test of EMS ideas...
 
     DynamicJsonDocument nestdoc(229);
@@ -205,10 +180,12 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["DeviceID"] = nestdoc["Device"];
     doc["MessageID"] = muid;
     doc["Payload"] = nestdoc;
-    doc["TXTime"] = (long(nestdoc["GPS"]["time"]) + long(currentMillis)) - long(nestdoc["GPS"]["time"]);
+    doc["TXTime"] = long(nestdoc["GPS"]["time"]);
     doc["duckType"].set(packet.duckType);
-    doc["topic"].set(nestdoc["Device"]);
+    doc["topic"].set(cdpTopic);
 
+    //std::string cdpTopic = toTopicString(packet.topic);
+    //std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
     display->clear();
     display->drawString(0, 10, "New Message");
     display->drawString(0, 20, sduid.c_str());
@@ -216,15 +193,12 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     display->drawString(0, 40, cdpTopic.c_str());
     display->sendBuffer();
 
-    //std::string cdpTopic = toTopicString(packet.topic);
-    //std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
-
     String jsonstat;
     serializeJson(doc,jsonstat);
 
-    if (mqttClient.publish(doc["topic"], jsonstat.c_str())) {
+    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str())) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
-        serializeJsonPretty(doc, Serial);
+        Serial.println(jsonstat.c_str());
         Serial.println("");
         Serial.println("[PAPIDUCK] Publish ok");
         display->drawString(0, 60, "Publish ok");
@@ -242,6 +216,7 @@ void handleDuckData(std::vector<byte> packetBuffer) {
     quackJson(packetBuffer);
 }
 void setup() {
+    duck.enableAcks(true);
     std::string deviceId("PAPADUCK");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
