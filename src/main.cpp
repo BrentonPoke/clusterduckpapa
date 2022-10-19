@@ -142,6 +142,7 @@ String convertToHex(byte* data, unsigned int size) {
  */
 void quackJson(const std::vector<byte>& packetBuffer) {
     auto start = millis();
+    auto packetSize = sizeof(packetBuffer.data());
     CdpPacket packet = CdpPacket(packetBuffer);
     const int bufferSize = 6 * JSON_OBJECT_SIZE(5);
     DynamicJsonDocument doc(bufferSize);
@@ -180,6 +181,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["DeviceID"] = nestdoc["Device"];
     doc["MessageID"] = muid;
     doc["Payload"] = nestdoc;
+    doc["PacketSize"] = uint32_t(packetSize);
     doc["TXTime"] = long(nestdoc["GPS"]["time"]);
     doc["duckType"].set(packet.duckType);
     doc["topic"].set(cdpTopic);
