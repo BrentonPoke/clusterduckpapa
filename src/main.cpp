@@ -142,10 +142,9 @@ String convertToHex(byte* data, unsigned int size) {
  */
 void quackJson(const std::vector<byte>& packetBuffer) {
     auto start = millis();
-    auto packetSize = sizeof(packetBuffer.data());
+    auto packetSize = packetBuffer.size();
     CdpPacket packet = CdpPacket(packetBuffer);
-    const int bufferSize = 6 * JSON_OBJECT_SIZE(5);
-    DynamicJsonDocument doc(bufferSize);
+    DynamicJsonDocument doc(300);
 
     // Here we treat the internal payload of the CDP packet as a string
     // but this is mostly application dependent.
@@ -173,16 +172,17 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 
     DynamicJsonDocument nestdoc(229);
     //char decompress[229];
-    Serial.println("Payload: " + String(payload.c_str()));
-    printf("Payload Size: %d", payload.size());
+    Serial.printf("Payload: %s\n",payload.c_str());
+    Serial.printf("Payload Size: %d\n", payload.size());
     //unishox2_decompress_simple(payload,int(payload.length()),decompress);
     deserializeJson(nestdoc, payload);
     auto currentMillis = millis() - start;
     doc["DeviceID"] = nestdoc["Device"];
     doc["MessageID"] = muid;
     doc["Payload"] = nestdoc;
-    doc["PacketSize"] = uint32_t(packetSize);
-    doc["TXTime"] = long(nestdoc["GPS"]["time"]);
+    doc["PacketSize"] = packetSize;
+    doc["PayloadSize"] = payload.size();
+    doc["TXTime"] = long(nestdoc["GPS"]["time"]) + currentMillis/1000;
     doc["duckType"].set(packet.duckType);
     doc["topic"].set(cdpTopic);
 
@@ -198,7 +198,9 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     String jsonstat;
     serializeJson(doc,jsonstat);
 
-    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str())) {
+    Serial.println(jsonstat);
+
+    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str(), true)) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         Serial.println(jsonstat.c_str());
         Serial.println("");
