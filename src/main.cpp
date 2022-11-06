@@ -24,9 +24,9 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* user = "Springdale2.4G";
-const char* pass = "12345678";
-const char* mqtt_server = "10.0.0.54";
+const char* user = "ASUS-X82U";
+const char* pass = "Lotus Born";
+const char* mqtt_server = "192.168.1.74";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
@@ -57,7 +57,7 @@ void setup_wifi() {
     }
     Serial.println("");
     Serial.println("[PAPI] WiFi connected");
-    Serial.println("[PAPI] IP address: ");
+    Serial.println("[PAPI] IP address: "+WiFi.localIP().toString());
 }
 /**
  * @brief Invoked by the MQTT server when a message has been received
@@ -144,7 +144,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     auto start = millis();
     auto packetSize = packetBuffer.size();
     CdpPacket packet = CdpPacket(packetBuffer);
-    DynamicJsonDocument doc(300);
+    DynamicJsonDocument doc(350);
 
     // Here we treat the internal payload of the CDP packet as a string
     // but this is mostly application dependent.
@@ -182,10 +182,9 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["Payload"] = nestdoc;
     doc["PacketSize"] = packetSize;
     doc["PayloadSize"] = payload.size();
-    doc["TXTime"] = long(nestdoc["GPS"]["time"]) + currentMillis/1000;
+    doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>() + currentMillis/1000;
     doc["duckType"].set(packet.duckType);
     doc["topic"].set(cdpTopic);
-
     //std::string cdpTopic = toTopicString(packet.topic);
     //std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
     display->clear();
@@ -195,12 +194,12 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     display->drawString(0, 40, cdpTopic.c_str());
     display->sendBuffer();
 
-    String jsonstat;
+    std::string jsonstat;
     serializeJson(doc,jsonstat);
 
-    Serial.println(jsonstat);
+    Serial.println(jsonstat.c_str());
 
-    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str(), true)) {
+    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str()),jsonstat.size()) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         Serial.println(jsonstat.c_str());
         Serial.println("");
@@ -220,7 +219,7 @@ void handleDuckData(std::vector<byte> packetBuffer) {
     quackJson(packetBuffer);
 }
 void setup() {
-    duck.enableAcks(true);
+    //duck.enableAcks(true);
     std::string deviceId("PAPADUCK");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
@@ -240,6 +239,7 @@ void setup() {
     setup_wifi();
     mqttClient.setServer(mqtt_server, 1883);
     mqttClient.setCallback(callback);
+    mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
     display->showDefaultScreen();
 }
