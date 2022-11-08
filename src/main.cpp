@@ -207,8 +207,8 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addTag("DeviceID",nestdoc["Device"]);
     telemetry.addTag("Gender",nestdoc["G"]);
     telemetry.addField("MessageID",muid.c_str());
-    telemetry.addField("PacketSize",float(packetSize));
-    telemetry.addField("PayloadSize",float(payload.size()));
+    telemetry.addField("PacketSize",packetSize);
+    telemetry.addField("PayloadSize",payload.size());
     telemetry.addField("SequenceNum",nestdoc["seqNum"].as<int>());
     telemetry.addField("satellites",nestdoc["satellites"].as<int>());
     telemetry.addField("SequenceID",nestdoc["seqID"].as<String>());
