@@ -209,17 +209,25 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("MessageID",muid.c_str());
     telemetry.addField("PacketSize",float(packetSize));
     telemetry.addField("PayloadSize",float(payload.size()));
-    telemetry.addField("seqNum",nestdoc["seqNum"].as<int>());
+    telemetry.addField("SequenceNum",nestdoc["seqNum"].as<int>());
     telemetry.addField("satellites",nestdoc["satellites"].as<int>());
-    telemetry.addField("seqID",nestdoc["seqID"].as<String>());
-    telemetry.addField("lat",nestdoc["GPS"]["lat"].as<float>());
-    telemetry.addField("lon",nestdoc["GPS"]["lon"].as<float>());
+    telemetry.addField("SequenceID",nestdoc["seqID"].as<String>());
+    telemetry.addField("latitude",nestdoc["GPS"]["lat"].as<float>());
+    telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<float>());
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
     telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
     if (!client.writePoint(telemetry)) {
-        Serial.print("InfluxDB write failed: ");
+        display->drawString(0, 60, "Write Failure");
+        display->sendBuffer();
         Serial.println(client.getLastErrorMessage());
+    }
+    else
+    {
+        Serial.print("InfluxDB write succeeded: ");
+        display->drawString(0, 60, "Write Success");
+        display->sendBuffer();
+        Serial.print("InfluxDB write succeeded: ");
     }
 
 //    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str(),false)) {
