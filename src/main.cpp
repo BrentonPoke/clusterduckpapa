@@ -6,6 +6,7 @@
 #include <arduino-timer.h>
 #include <string>
 #include <algorithm>
+#include "influx.h"
 //#include "unishox2.h"
 
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
@@ -24,9 +25,9 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* user = "ASUS-X82U";
-const char* pass = "Lotus Born";
-const char* mqtt_server = "192.168.1.74";
+const char* user = "Springdale2.4G";
+const char* pass = "12345678";
+const char* mqtt_server = "10.0.0.54";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
@@ -199,18 +200,40 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 
     Serial.println(jsonstat.c_str());
 
-    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str()),jsonstat.size()) {
-        Serial.println("[PAPIDUCK] Packet forwarded:");
-        Serial.println(jsonstat.c_str());
-        Serial.println("");
-        Serial.println("[PAPIDUCK] Publish ok");
-        display->drawString(0, 60, "Publish ok");
-        display->sendBuffer();
-    } else {
-        Serial.println("[PAPIDUCK] Publish failed");
-        display->drawString(0, 60, "Publish failed");
-        display->sendBuffer();
+    InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
+    Point telemetry("Duck Transmissions");
+
+    telemetry.clearFields();
+    telemetry.addTag("DeviceID",nestdoc["Device"]);
+    telemetry.addTag("Gender",nestdoc["G"]);
+    telemetry.addField("MessageID",muid.c_str());
+    telemetry.addField("PacketSize",float(packetSize));
+    telemetry.addField("PayloadSize",float(payload.size()));
+    telemetry.addField("seqNum",nestdoc["seqNum"].as<int>());
+    telemetry.addField("satellites",nestdoc["satellites"].as<int>());
+    telemetry.addField("seqID",nestdoc["seqID"].as<String>());
+    telemetry.addField("lat",nestdoc["GPS"]["lat"].as<float>());
+    telemetry.addField("lon",nestdoc["GPS"]["lon"].as<float>());
+    telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
+    telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
+    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
+    if (!client.writePoint(telemetry)) {
+        Serial.print("InfluxDB write failed: ");
+        Serial.println(client.getLastErrorMessage());
     }
+
+//    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str(),false)) {
+//        Serial.println("[PAPIDUCK] Packet forwarded:");
+//        Serial.println(jsonstat.c_str());
+//        Serial.println("");
+//        Serial.println("[PAPIDUCK] Publish ok");
+//        display->drawString(0, 60, "Publish ok");
+//        display->sendBuffer();
+//    } else {
+//        Serial.println("[PAPIDUCK] Publish failed");
+//        display->drawString(0, 60, "Publish failed");
+//        display->sendBuffer();
+//    }
 }
 
 void handleDuckData(std::vector<byte> packetBuffer) {
