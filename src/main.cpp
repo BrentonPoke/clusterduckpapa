@@ -25,8 +25,8 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* user = "Springdale2.4G";
-const char* pass = "12345678";
+const char* user = "CIT-IOT";
+const char* pass = "xup|VgbV4^i#E";
 const char* mqtt_server = "10.0.0.54";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
