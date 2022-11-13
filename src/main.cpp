@@ -29,7 +29,7 @@ auto timer = timer_create_default();
 //const char* pass = "xup|VgbV4^i#E";
 const char* user = "ASUS-X82U2.4";
 const char* pass = "Lotus Born";
-const char* mqtt_server = "192.168.1.74";
+const char* mqtt_server = "ritter";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
@@ -185,10 +185,9 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["Payload"] = nestdoc;
     doc["PacketSize"] = packetSize;
     doc["PayloadSize"] = payload.size();
-    doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>() + currentMillis/1000;
+    doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>()*1000L + currentMillis;
     doc["duckType"].set(packet.duckType);
-    doc["topic"].set(cdpTopic);
-    std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
+    doc["topic"].set(gps);
     display->clear();
     display->drawString(0, 10, "New Message");
     display->drawString(0, 20, sduid.c_str());
@@ -213,11 +212,11 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("SequenceNum",nestdoc["seqNum"].as<int>());
     telemetry.addField("satellites",nestdoc["satellites"].as<int>());
     telemetry.addField("SequenceID",nestdoc["seqID"].as<String>());
-    telemetry.addField("latitude",nestdoc["GPS"]["lat"].as<float>());
-    telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<float>());
+    telemetry.addField("latitude",nestdoc["GPS"]["lat"].as<double>());
+    telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<double>());
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
-    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
+    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start));
 //    if (!client.writePoint(telemetry)) {
 //        display->drawString(0, 60, "Write Failure");
 //        display->sendBuffer();
@@ -231,7 +230,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 //        Serial.print("InfluxDB write succeeded: ");
 //    }
 
-    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str())) {
+    if (mqttClient.publish("gps",jsonstat.c_str(), true)) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         Serial.println(jsonstat.c_str());
         Serial.println("");
@@ -280,7 +279,7 @@ void setup() {
     setup_wifi();
     mqttClient.setServer(mqtt_server, 1883);
     mqttClient.setCallback(callback);
-    mqttClient.setKeepAlive(30);
+    //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
     display->showDefaultScreen();
 }
