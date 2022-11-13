@@ -25,9 +25,11 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* user = "CIT-IOT";
-const char* pass = "xup|VgbV4^i#E";
-const char* mqtt_server = "10.0.0.54";
+//const char* user = "CIT-IOT";
+//const char* pass = "xup|VgbV4^i#E";
+const char* user = "ASUS-X82U2.4";
+const char* pass = "Lotus Born";
+const char* mqtt_server = "192.168.1.74";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
@@ -177,17 +179,16 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     Serial.printf("Payload Size: %d\n", payload.size());
     //unishox2_decompress_simple(payload,int(payload.length()),decompress);
     deserializeJson(nestdoc, payload);
-//    auto currentMillis = millis() - start;
-//    doc["DeviceID"] = nestdoc["Device"];
-//    doc["MessageID"] = muid;
-//    doc["Payload"] = nestdoc;
-//    doc["PacketSize"] = packetSize;
-//    doc["PayloadSize"] = payload.size();
-//    doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>() + currentMillis/1000;
-//    doc["duckType"].set(packet.duckType);
-//    doc["topic"].set(cdpTopic);
-    //std::string cdpTopic = toTopicString(packet.topic);
-    //std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
+    auto currentMillis = millis() - start;
+    doc["DeviceID"] = nestdoc["Device"];
+    doc["MessageID"] = muid;
+    doc["Payload"] = nestdoc;
+    doc["PacketSize"] = packetSize;
+    doc["PayloadSize"] = payload.size();
+    doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>() + currentMillis/1000;
+    doc["duckType"].set(packet.duckType);
+    doc["topic"].set(cdpTopic);
+    std::string topic = "iot-2/evt/" + cdpTopic + "/fmt/json";
     display->clear();
     display->drawString(0, 10, "New Message");
     display->drawString(0, 20, sduid.c_str());
@@ -217,31 +218,41 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
     telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
-    if (!client.writePoint(telemetry)) {
+//    if (!client.writePoint(telemetry)) {
+//        display->drawString(0, 60, "Write Failure");
+//        display->sendBuffer();
+//        Serial.println(client.getLastErrorMessage());
+//    }
+//    else
+//    {
+//        Serial.print("InfluxDB write succeeded: ");
+//        display->drawString(0, 60, "Write Success");
+//        display->sendBuffer();
+//        Serial.print("InfluxDB write succeeded: ");
+//    }
+
+    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str())) {
+        Serial.println("[PAPIDUCK] Packet forwarded:");
+        Serial.println(jsonstat.c_str());
+        Serial.println("");
+        Serial.println("[PAPIDUCK] Publish ok");
+        display->drawString(0, 60, "Publish ok");
+        display->sendBuffer();
+    } else if (!client.writePoint(telemetry)) {
         display->drawString(0, 60, "Write Failure");
         display->sendBuffer();
         Serial.println(client.getLastErrorMessage());
     }
-    else
-    {
-        Serial.print("InfluxDB write succeeded: ");
+    else {
+        Serial.println("InfluxDB write succeeded: ");
         display->drawString(0, 60, "Write Success");
         display->sendBuffer();
-        Serial.print("InfluxDB write succeeded: ");
     }
-
-//    if (mqttClient.publish(cdpTopic.c_str(), jsonstat.c_str(),false)) {
-//        Serial.println("[PAPIDUCK] Packet forwarded:");
-//        Serial.println(jsonstat.c_str());
-//        Serial.println("");
-//        Serial.println("[PAPIDUCK] Publish ok");
-//        display->drawString(0, 60, "Publish ok");
-//        display->sendBuffer();
-//    } else {
-//        Serial.println("[PAPIDUCK] Publish failed");
-//        display->drawString(0, 60, "Publish failed");
-//        display->sendBuffer();
-//    }
+   // else {
+   //     Serial.println("[PAPIDUCK] Publish failed");
+   //     display->drawString(0, 60, "Publish failed");
+   //     display->sendBuffer();
+   // }
 }
 
 void handleDuckData(std::vector<byte> packetBuffer) {
@@ -260,7 +271,6 @@ void setup() {
     display->setupDisplay(duck.getType(), devId);
     // the default setup is equivalent to the above setup sequence
     duck.setupSerial(115200);
-    Serial.begin(115200);
     duck.setupRadio(LORA_FREQ, LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN,
                     LORA_DIO1_PIN, LORA_TXPOWER);
     duck.setDeviceId(devId);
