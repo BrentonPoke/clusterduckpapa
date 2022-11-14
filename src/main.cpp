@@ -272,7 +272,7 @@ void handleDuckData(std::vector<byte> packetBuffer) {
                " calculated:" + String(computed_data_crc));
         InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
         Point telemetry("Corrupt Duck Transmissions");
-        telemetry.clearFields();
+
         telemetry.addField("PacketSize",packetSize);
         telemetry.addField("PayloadSize",packet.data.size());
         telemetry.addField("Packet_Data_CRC",packet_data_crc);
