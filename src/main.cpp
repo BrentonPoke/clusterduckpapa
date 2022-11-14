@@ -257,6 +257,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 void handleDuckData(std::vector<byte> packetBuffer) {
     auto packet = CdpPacket(packetBuffer);
     auto packetSize = packetBuffer.size();
+    std::string sduid(packet.sduid.begin(), packet.sduid.end());
     packet.data.shrink_to_fit();
 
     uint32_t packet_data_crc = packet.dcrc;
@@ -272,7 +273,7 @@ void handleDuckData(std::vector<byte> packetBuffer) {
                " calculated:" + String(computed_data_crc));
         InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
         Point telemetry("Corrupt Duck Transmissions");
-        telemetry.addTag("DeviceID",packet.sduid.data());
+        telemetry.addTag("DeviceID",sduid.c_str());
         telemetry.addField("PacketSize",packetSize);
         telemetry.addField("PayloadSize",packet.data.size());
         telemetry.addField("Packet_Data_CRC",packet_data_crc);
