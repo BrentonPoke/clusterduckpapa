@@ -29,13 +29,12 @@ auto timer = timer_create_default();
 //const char* pass = "xup|VgbV4^i#E";
 const char* user = "ASUS-X82U2.4";
 const char* pass = "Lotus Born";
-const char* mqtt_server = "ritter";
+const char* mqtt_server = "192.168.1.74";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
 WiFiClient wifiClient;
-PubSubClient mqttClient(wifiClient);
-
+PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
 
 
 /**
@@ -76,7 +75,7 @@ void callback(char* topic, byte* message, unsigned int length) {
 void reconnect() {
     while (!mqttClient.connected()) {
         Serial.print("[PAPI] Attempting MQTT connection...");
-        if (mqttClient.connect("ESP32Client")) {
+        if (mqttClient.connect("TTGO ESP32Client")) {
             Serial.println("[PAPI] connected");
             mqttClient.subscribe("status");
         } else {
@@ -216,7 +215,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<double>());
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
-    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start));
+    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>()*1000L + (millis() - start));
 //    if (!client.writePoint(telemetry)) {
 //        display->drawString(0, 60, "Write Failure");
 //        display->sendBuffer();
@@ -230,7 +229,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 //        Serial.print("InfluxDB write succeeded: ");
 //    }
 
-    if (mqttClient.publish("gps",jsonstat.c_str(), true)) {
+    if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str())) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         Serial.println(jsonstat.c_str());
         Serial.println("");
@@ -243,7 +242,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
         Serial.println(client.getLastErrorMessage());
     }
     else {
-        Serial.println("InfluxDB write succeeded: ");
+        Serial.println("InfluxDB write succeeded");
         display->drawString(0, 60, "Write Success");
         display->sendBuffer();
     }
@@ -301,12 +300,12 @@ void setup() {
     duck.setupRadio(LORA_FREQ, LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN,
                     LORA_DIO1_PIN, LORA_TXPOWER);
     duck.setDeviceId(devId);
-
+    setup_wifi();
+    duck.setupDns();
 
     duck.onReceiveDuckData(handleDuckData);
-    setup_wifi();
-    mqttClient.setServer(mqtt_server, 1883);
-    mqttClient.setCallback(callback);
+//    mqttClient.setServer(mqtt_server, 1883);
+//    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
     display->showDefaultScreen();
