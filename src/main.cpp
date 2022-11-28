@@ -25,16 +25,16 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-//const char* user = "CIT-IOT";
-//const char* pass = "xup|VgbV4^i#E";
-const char* user = "ASUS-X82U2.4";
-const char* pass = "Lotus Born";
-const char* mqtt_server = "192.168.1.74";
+const char* user = "CIT-IOT";
+const char* pass = "xup|VgbV4^i#E";
+//const char* user = "ASUS-X82U2.4";
+//const char* pass = "Lotus Born";
+//const char* mqtt_server = "ritter";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 
 WiFiClient wifiClient;
-PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
+//PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
 
 
 /**
@@ -72,24 +72,24 @@ void callback(char* topic, byte* message, unsigned int length) {
  * @brief Periodically attempts to re-establish the MQTT connection
  *
  */
-void reconnect() {
-    while (!mqttClient.connected()) {
-        Serial.print("[PAPI] Attempting MQTT connection...");
-        if (mqttClient.connect("TTGO ESP32Client")) {
-            Serial.println("[PAPI] connected");
-            mqttClient.subscribe("status");
-        } else {
-            Serial.print("[PAPI] failed, rc=");
-            Serial.println("[PAPI] try again in 5 seconds");
-            delay(MQTT_CONNECTION_DELAY_MS);
-        }
-    }
-}
+//void reconnect() {
+//    while (!mqttClient.connected()) {
+//        Serial.print("[PAPI] Attempting MQTT connection...");
+//        if (mqttClient.connect("TTGO ESP32Client")) {
+//            Serial.println("[PAPI] connected");
+//            mqttClient.subscribe("status");
+//        } else {
+//            Serial.print("[PAPI] failed, rc=");
+//            Serial.println("[PAPI] try again in 5 seconds");
+//            delay(MQTT_CONNECTION_DELAY_MS);
+//        }
+//    }
+//}
 void loop() {
-    if (!mqttClient.connected()) {
-        reconnect();
-    }
-    mqttClient.loop();
+   // if (!mqttClient.connected()) {
+   //     reconnect();
+   // }
+   // mqttClient.loop();
     duck.run();
 }
 
@@ -229,14 +229,15 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 //        Serial.print("InfluxDB write succeeded: ");
 //    }
 
-    if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str())) {
-        Serial.println("[PAPIDUCK] Packet forwarded:");
-        Serial.println(jsonstat.c_str());
-        Serial.println("");
-        Serial.println("[PAPIDUCK] Publish ok");
-        display->drawString(0, 60, "Publish ok");
-        display->sendBuffer();
-    } else if (!client.writePoint(telemetry)) {
+  //  if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str())) {
+  //      Serial.println("[PAPIDUCK] Packet forwarded:");
+  //      Serial.println(jsonstat.c_str());
+  //      Serial.println("");
+  //      Serial.println("[PAPIDUCK] Publish ok");
+  //      display->drawString(0, 60, "Publish ok");
+  //      display->sendBuffer();
+  //  } else
+        if (!client.writePoint(telemetry)) {
         display->drawString(0, 60, "Write Failure");
         display->sendBuffer();
         Serial.println(client.getLastErrorMessage());
