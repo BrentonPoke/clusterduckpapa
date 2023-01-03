@@ -20,7 +20,7 @@ ESP8266WiFiMulti wifiMulti;
 // WiFi password
 #define WIFI_PASSWORD "PASSWORD"
 // InfluxDB v2 server url, e.g. https://eu-central-1-1.aws.cloud2.influxdata.com (Use: InfluxDB UI -> Load Data -> Client Libraries)
-#define INFLUXDB_URL "http://ritter:8086"
+#define INFLUXDB_URL "http://crash-override:8086"
 // InfluxDB v2 server or cloud API token (Use: InfluxDB UI -> Data -> API Tokens -> <select token>)
 #define INFLUXDB_TOKEN "mytoken"
 // InfluxDB v2 organization id (Use: InfluxDB UI -> User -> About -> Common Ids )

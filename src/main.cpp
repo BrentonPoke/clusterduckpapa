@@ -25,8 +25,8 @@ DuckDisplay* display = NULL;
 
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* user = "CIT-IOT";
-const char* pass = "xup|VgbV4^i#E";
+const char* user = "ASUS-X82U2.4";
+const char* pass = "Lotus Born";
 //const char* user = "ASUS-X82U2.4";
 //const char* pass = "Lotus Born";
 //const char* mqtt_server = "ritter";
@@ -209,13 +209,14 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("PacketSize",packetSize);
     telemetry.addField("PayloadSize",payload.size());
     telemetry.addField("SequenceNum",nestdoc["seqNum"].as<int>());
-    telemetry.addField("satellites",nestdoc["satellites"].as<int>());
+    telemetry.addField("satellites",nestdoc["GPS"]["satellites"].as<int>());
     telemetry.addField("SequenceID",nestdoc["seqID"].as<String>());
     telemetry.addField("latitude",nestdoc["GPS"]["lat"].as<double>());
     telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<double>());
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
-    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>()*1000L + (millis() - start));
+    currentMillis = millis() - start;
+    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
 //    if (!client.writePoint(telemetry)) {
 //        display->drawString(0, 60, "Write Failure");
 //        display->sendBuffer();
