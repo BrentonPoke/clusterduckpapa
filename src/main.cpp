@@ -215,7 +215,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<double>(),8);
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
-    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
+    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<time_t>() + (millis() - start)/1000L);
 //    if (!client.writePoint(telemetry)) {
 //        display->drawString(0, 60, "Write Failure");
 //        display->sendBuffer();
