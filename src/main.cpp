@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <ctime>
 #include <arduino-timer.h>
 #include <string>
 #include <algorithm>
@@ -32,6 +33,7 @@ const char* pass = "Lotus Born";
 //const char* mqtt_server = "ritter";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
+const char* ntpServer = "pool.ntp.org";
 
 WiFiClient wifiClient;
 //PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
@@ -147,7 +149,6 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     auto packetSize = packetBuffer.size();
     CdpPacket packet = CdpPacket(packetBuffer);
     DynamicJsonDocument doc(350);
-
     // Here we treat the internal payload of the CDP packet as a string
     // but this is mostly application dependent.
     // The parsingf here is optional. The Papa duck could simply decide to
@@ -186,7 +187,6 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["PayloadSize"] = payload.size();
     doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>()*1000L + currentMillis;
     doc["duckType"].set(packet.duckType);
-    doc["topic"].set(gps);
     display->clear();
     display->drawString(0, 10, "New Message");
     display->drawString(0, 20, sduid.c_str());
@@ -204,7 +204,6 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 
     telemetry.clearFields();
     telemetry.addTag("DeviceID",nestdoc["Device"]);
-    telemetry.addTag("Gender",nestdoc["G"]);
     telemetry.addField("MessageID",muid.c_str());
     telemetry.addField("PacketSize",packetSize);
     telemetry.addField("PayloadSize",payload.size());
@@ -215,7 +214,9 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     telemetry.addField("longitude",nestdoc["GPS"]["lon"].as<double>(),8);
     telemetry.addField("altitude",nestdoc["GPS"]["alt"].as<float>());
     telemetry.addField("speed",nestdoc["GPS"]["speed"].as<float>());
-    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>() + (millis() - start)/1000);
+    telemetry.addField("TransmissionTime",nestdoc["GPS"]["time"].as<unsigned long>());
+    telemetry.addField("MCUdelay",nestdoc["MCUdelay"].as<unsigned long>());
+    telemetry.addField("ReceiveDelay",(millis() - start));
 //    if (!client.writePoint(telemetry)) {
 //        display->drawString(0, 60, "Write Failure");
 //        display->sendBuffer();
@@ -303,7 +304,7 @@ void setup() {
     duck.setDeviceId(devId);
     setup_wifi();
     duck.setupDns();
-
+    configTime(0, 0, ntpServer,"time.nist.gov");
     duck.onReceiveDuckData(handleDuckData);
 //    mqttClient.setServer(mqtt_server, 1883);
 //    mqttClient.setCallback(callback);
