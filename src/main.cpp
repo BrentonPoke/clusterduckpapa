@@ -122,7 +122,7 @@ std::string toTopicString(byte topic) {
             topicString = "health";
             break;
         default:
-            topicString = "TTGO";
+            topicString = "status";
     }
 
     return topicString;
@@ -198,7 +198,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 
     Serial.println(jsonstat);
 
-    if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str(),true)) {
+    if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str(), true)) {
         Serial.println("[PAPIDUCK] Packet forwarded:");
         Serial.println(jsonstat.c_str());
         Serial.println("");
