@@ -8,7 +8,7 @@
 #include <string>
 #include <algorithm>
 #include <influx.h>
-#include <MQTT.h>
+#include <chrono>
 //#include "unishox2.h"
 
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
@@ -24,10 +24,11 @@
 // Use pre-built papa duck.
 PapaDuck duck;
 DuckDisplay* display = NULL;
-
+InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
+Point telemetry("Duck Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* user = "ASUS-X82U2.4";
+const char* ssid = "ASUS-X82U2.4";
 const char* pass = "Lotus Born";
 //const char* user = "ASUS-X82U2.4";
 //const char* pass = "Lotus Born";
@@ -47,6 +48,8 @@ PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
  */
 
 
+void post();
+
 /**
  * @brief Establish the connection to the wifi network the Papa Duck can reach
  *
@@ -54,8 +57,8 @@ PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
 void setup_wifi() {
     Serial.println();
     Serial.print("[PAPI] Connecting to ");
-    Serial.println(user);
-    WiFi.begin(user, pass);
+    Serial.println(ssid);
+    WiFi.begin(ssid, pass);
     while (WiFi.status() != WL_CONNECTED) {
         delay(WIFI_CONNECTION_DELAY_MS);
         Serial.print(".");
@@ -78,7 +81,7 @@ void callback(char* topic, byte* message, unsigned int length) {
 void reconnect() {
     while (!mqttClient.connected()) {
         Serial.print("[PAPI] Attempting MQTT connection...");
-        if (mqttClient.connect("TTGO ESP32Client")) {
+        if (mqttClient.connect("PAPADUCK")) {
             Serial.println("[PAPI] connected");
             mqttClient.subscribe("status");
         } else {
@@ -170,7 +173,6 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     Serial.println("[PAPI] data:    " + String(payload.c_str()));
     Serial.println("[PAPI] duck:    " + String(packet.duckType));
 
-    std::string cdpTopic = toTopicString(packet.topic);
 
     //test of EMS ideas...
 
@@ -184,13 +186,12 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["PacketSize"] = packetSize;
     doc["PayloadSize"] = payload.size();
     doc["ReceiveDelay"] = millis() - start;
-    //doc["TXTime"] = nestdoc["GPS"]["time"].as<unsigned long>()*1000L + currentMillis;
     //doc["duckType"].set(packet.duckType);
     display->clear();
     display->drawString(0, 10, "New Message");
     display->drawString(0, 20, sduid.c_str());
     display->drawString(0, 30, muid.c_str());
-    display->drawString(0, 40, cdpTopic.c_str());
+    display->drawString(0, 40, toTopicString(packet.topic).c_str());
     display->sendBuffer();
 
     String jsonstat;
@@ -198,21 +199,22 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 
     Serial.println(jsonstat);
 
-    if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str(), true)) {
-        Serial.println("[PAPIDUCK] Packet forwarded:");
-        Serial.println(jsonstat.c_str());
-        Serial.println("");
-        Serial.println("[PAPIDUCK] Publish ok");
-        display->drawString(0, 60, "Publish ok");
-        display->sendBuffer();
-    } else {
+    //if (mqttClient.publish(cdpTopic.c_str(),jsonstat.c_str(), true)) {
+    //    Serial.println("[PAPIDUCK] Packet forwarded:");
+    //    Serial.println(jsonstat.c_str());
+    //    Serial.println("");
+    //    Serial.println("[PAPIDUCK] Publish ok");
+    //    display->drawString(0, 60, "Publish ok");
+    //    display->sendBuffer();
+    //} else {
 
-        InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-        Point telemetry("Duck Transmissions");
 
         telemetry.clearFields();
+        telemetry.clearTags();
         telemetry.addTag("DeviceID", nestdoc["Device"]);
         telemetry.addField("MessageID", muid.c_str());
+        telemetry.addField("BatteryLevel", nestdoc["level"].as<int>());
+        telemetry.addField("voltage", nestdoc["voltage"].as<int>());
         telemetry.addField("PacketSize", packetSize);
         telemetry.addField("PayloadSize", payload.size());
         telemetry.addField("SequenceNum", nestdoc["seqNum"].as<int>());
@@ -222,9 +224,14 @@ void quackJson(const std::vector<byte>& packetBuffer) {
         telemetry.addField("longitude", nestdoc["GPS"]["lon"].as<double>(), 8);
         telemetry.addField("altitude", nestdoc["GPS"]["alt"].as<float>());
         telemetry.addField("speed", nestdoc["GPS"]["speed"].as<float>());
-        telemetry.addField("TransmissionTime", nestdoc["GPS"]["time"].as<time_t>());
-        telemetry.addField("MCUdelay", nestdoc["MCUdelay"].as<unsigned long>());
+        telemetry.addField("TransmissionTime", nestdoc["GPS"]["time"].as<unsigned long int>());
+        telemetry.addField("MCUdelay", nestdoc["MCUdelay"].as<unsigned long int>());
         telemetry.addField("ReceiveDelay", (millis() - start));
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+        Serial.printf("Time: %lld \n", nano);
+        telemetry.setTime(nano);
 //    if (!client.writePoint(telemetry)) {
 //        display->drawString(0, 60, "Write Failure");
 //        display->sendBuffer();
@@ -237,21 +244,16 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 //        display->sendBuffer();
 //        Serial.print("InfluxDB write succeeded: ");
 //    }
-        if (!client.writePoint(telemetry)) {
-            display->drawString(0, 60, "Write Failure");
-            display->sendBuffer();
-            Serial.println(client.getLastErrorMessage());
-        } else {
-            Serial.println("InfluxDB write succeeded");
-            display->drawString(0, 60, "Write Success");
-            display->sendBuffer();
-        }
+    if (!client.writePoint(telemetry)) {
+        display->drawString(0, 60, "Write Failure");
+        display->sendBuffer();
+        Serial.println(client.getLastErrorMessage());
+    } else {
+        Serial.println("InfluxDB write succeeded");
+        display->drawString(0, 60, "Write Success");
+        display->sendBuffer();
     }
-   // else {
-   //     Serial.println("[PAPIDUCK] Publish failed");
-   //     display->drawString(0, 60, "Publish failed");
-   //     display->sendBuffer();
-   // }
+    // }
 }
 
 void handleDuckData(std::vector<byte> packetBuffer) {
@@ -311,5 +313,6 @@ void setup() {
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
+
     display->showDefaultScreen();
 }
