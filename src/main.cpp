@@ -28,11 +28,11 @@ InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKE
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* ssid = "ASUS-X82U2.4";
-const char* pass = "Lotus Born";
-//const char* user = "ASUS-X82U2.4";
+//const char* ssid = "ASUS-X82U2.4";
 //const char* pass = "Lotus Born";
-const char* mqtt_server = "crash-override";
+const char* ssid = "CIT-IOT";
+const char* pass = "xup|VgbV4^i#E";
+const char* mqtt_server = "35.7.120.10";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 const char* ntpServer = "pool.ntp.org";
@@ -214,7 +214,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
         telemetry.addTag("DeviceID", nestdoc["Device"]);
         telemetry.addField("MessageID", muid.c_str());
         telemetry.addField("BatteryLevel", nestdoc["level"].as<int>());
-        telemetry.addField("voltage", nestdoc["voltage"].as<int>());
+        telemetry.addField("voltage", nestdoc["Voltage"].as<int>());
         telemetry.addField("PacketSize", packetSize);
         telemetry.addField("PayloadSize", payload.size());
         telemetry.addField("SequenceNum", nestdoc["seqNum"].as<int>());
@@ -309,7 +309,7 @@ void setup() {
     duck.onReceiveDuckData(handleDuckData);
 
    // client.begin("192.168.1.74",wifiClient);
-    mqttClient.setServer(mqtt_server, 1883);
+    //mqttClient.setServer(mqtt_server, 1883);
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
