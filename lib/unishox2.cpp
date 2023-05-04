@@ -23,7 +23,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
-#include "../include/unishox2.h"
+#include "unishox2.h"
 
 typedef unsigned char byte;
 const char * USX_FREQ_SEQ_DFLT[] = {"\": \"", "\": ", "</", "=\"", "\":\"", "://"};
