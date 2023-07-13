@@ -3,46 +3,36 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
-#include <ctime>
 #include <arduino-timer.h>
 #include <string>
+#include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_SSD1306.h>
-#include <algorithm>
+//#include <Adafruit_SSD1306.h>
 #include <influx.h>
 #include <chrono>
+#include <vector>
 //#include "unishox2.h"
 
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
 #define LORA_TXPOWER 20 // Transmit Power
 //// LORA HELTEC PIN CONFIG
-#define LORA_MISO 19
-#define LORA_CS_PIN 18
-#define LORA_MOSI 27
-#define LORA_SCK 5
-#define LORA_RST 14
-#define LORA_IRQ 26
-#define ESP32
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define OLED_SDA 4
-#define OLED_SCL 15
-#define OLED_RST 16
 #define SCREEN_ADDRESS 0x3c
 
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 // Use pre-built papa duck.
 PapaDuck duck;
-//DuckDisplay* display = NULL;
-//InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-//Point telemetry("Duck Transmissions");
+DuckDisplay* display = NULL;
+InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
+Point telemetry("Duck Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
 const char* ssid = "ASUS-X82U2.4";
 const char* pass = "Lotus Born";
-const char* mqtt_server = "crash-override";
+const char* mqtt_server = "192.168.1.74";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 const char* ntpServer = "pool.ntp.org";
@@ -102,10 +92,10 @@ void reconnect() {
     }
 }
 void loop() {
-//    if (!mqttClient.connected()) {
-//        reconnect();
-//    }
-//    mqttClient.loop();
+    if (!mqttClient.connected()) {
+        reconnect();
+    }
+   mqttClient.loop();
     duck.run();
 }
 
@@ -197,15 +187,13 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["PayloadSize"] = payload.size();
     doc["ReceiveDelay"] = millis() - start;
     //doc["duckType"].set(packet.duckType);
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println("New Message");
-    display.println(sduid.c_str());
-    display.println(muid.c_str());
-    display.println(toTopicString(packet.topic).c_str());
-    display.display();
+    display->clear();
+    display->setCursor(0, 0);
+    display->drawString(0,10,"New Message");
+    display->drawString(0,20,sduid.c_str());
+    display->drawString(0,30,muid.c_str());
+    display->drawString(0,40,toTopicString(packet.topic).c_str());
+    display->sendBuffer();
 
     String jsonstat;
     serializeJson(doc,jsonstat);
@@ -217,106 +205,76 @@ void quackJson(const std::vector<byte>& packetBuffer) {
         Serial.println(jsonstat.c_str());
         Serial.println("");
         Serial.println("[PAPIDUCK] Publish ok");
-        display.println("Publish ok");
-        display.display();
+        display->drawString(0,50,"Publish ok");
+        display->sendBuffer();
     } else {
 
 
-//        telemetry.clearFields();
-//        telemetry.clearTags();
-//        telemetry.addTag("DeviceID", nestdoc["Device"]);
-//        telemetry.addField("MessageID", muid.c_str());
-//        telemetry.addField("BatteryLevel", nestdoc["level"].as<int>());
-//        telemetry.addField("voltage", nestdoc["voltage"].as<int>());
-//        telemetry.addField("PacketSize", packetSize);
-//        telemetry.addField("PayloadSize", payload.size());
-//        telemetry.addField("SequenceNum", nestdoc["seqNum"].as<int>());
-//        telemetry.addField("satellites", nestdoc["GPS"]["satellites"].as<int>());
-//        telemetry.addField("SequenceID", nestdoc["seqID"].as<String>());
-//        telemetry.addField("latitude", nestdoc["GPS"]["lat"].as<double>(), 8);
-//        telemetry.addField("longitude", nestdoc["GPS"]["lon"].as<double>(), 8);
-//        telemetry.addField("altitude", nestdoc["GPS"]["alt"].as<float>());
-//        telemetry.addField("speed", nestdoc["GPS"]["speed"].as<float>());
-//        telemetry.addField("TransmissionTime", nestdoc["GPS"]["time"].as<unsigned long int>());
-//        telemetry.addField("MCUdelay", nestdoc["MCUdelay"].as<unsigned long int>());
-//        telemetry.addField("ReceiveDelay", (millis() - start));
-//        auto now = std::chrono::system_clock::now();
-//        auto duration = now.time_since_epoch();
-//        auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
-//        Serial.printf("Time: %lld \n", nano);
-//        telemetry.setTime(nano);
+        telemetry.clearFields();
+        telemetry.clearTags();
+        telemetry.addTag("DeviceID", nestdoc["Device"]);
+        telemetry.addField("MessageID", muid.c_str());
+        telemetry.addField("BatteryLevel", nestdoc["level"].as<int>());
+        telemetry.addField("voltage", nestdoc["Voltage"].as<int>());
+        telemetry.addField("PacketSize", packetSize);
+        telemetry.addField("PayloadSize", payload.size());
+        telemetry.addField("SequenceNum", nestdoc["seqNum"].as<int>());
+        telemetry.addField("satellites", nestdoc["GPS"]["satellites"].as<int>());
+        telemetry.addField("SequenceID", nestdoc["seqID"].as<String>());
+        telemetry.addField("latitude", nestdoc["GPS"]["lat"].as<double>(), 8);
+        telemetry.addField("longitude", nestdoc["GPS"]["lon"].as<double>(), 8);
+        telemetry.addField("altitude", nestdoc["GPS"]["alt"].as<float>());
+        telemetry.addField("speed", nestdoc["GPS"]["speed"].as<float>());
+        telemetry.addField("TransmissionTime", nestdoc["GPS"]["time"].as<unsigned long int>());
+        telemetry.addField("MCUdelay", nestdoc["MCUdelay"].as<unsigned long int>());
+        telemetry.addField("ReceiveDelay", (millis() - start));
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+        Serial.printf("Time: %lld \n", nano);
+        telemetry.setTime(nano);
 
-//    if (!client.writePoint(telemetry)) {
-//        display->drawString(0, 60, "Write Failure");
-//        display->sendBuffer();
-//        Serial.println(client.getLastErrorMessage());
-//    } else {
-//        Serial.println("InfluxDB write succeeded");
-//        display->drawString(0, 60, "Write Success");
-//        display->sendBuffer();
-//    }
+    if (!client.writePoint(telemetry)) {
+        display->drawString(0, 60, "Write Failure");
+        display->sendBuffer();
+        Serial.println(client.getLastErrorMessage());
+    } else {
+        Serial.println("InfluxDB write succeeded");
+        display->drawString(0, 60, "Write Success");
+        display->sendBuffer();
+    }
      }
 }
 
 void handleDuckData(std::vector<byte> packetBuffer) {
-    auto packet = CdpPacket(packetBuffer);
-    auto packetSize = packetBuffer.size();
-    std::string sduid(packet.sduid.begin(), packet.sduid.end());
-    packet.data.shrink_to_fit();
-
-    uint32_t packet_data_crc = packet.dcrc;
-    uint32_t computed_data_crc = CRC32::calculate(packet.data.data(), packet.data.size());
-    Serial.printf("Packet_Data: %s \n",packet.data.data());
-    //Serial.printf("Computed_Data: %s \n",data_section.data());
-    Serial.printf("Packet_Data_CRC: %u \n",packet_data_crc);
-    Serial.printf("Computed_Data_CRC: %u \n",computed_data_crc);
-    Serial.println("[PAPI] got packet: " +
-                   convertToHex(packetBuffer.data(), packetBuffer.size()));
-    if (String(packet_data_crc) != String(computed_data_crc)) {
-        logerr("data crc mismatch: received: " + String(packet_data_crc) +
-               " calculated:" + String(computed_data_crc));
-//        InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-//        Point telemetry("Corrupt Duck Transmissions");
-//        telemetry.addTag("DeviceID",sduid.c_str());
-//        telemetry.addField("PacketSize",packetSize);
-//        telemetry.addField("PayloadSize",packet.data.size());
-//        telemetry.addField("Packet_Data_CRC",packet_data_crc);
-//        telemetry.addField("Computed_Data_CRC",computed_data_crc);
-//        if (!client.writePoint(telemetry)) {
-//            Serial.println(client.getLastErrorMessage());
-//        }
-//        else {
-//            Serial.println("InfluxDB write succeeded: ");
-//        }
-    } else
         quackJson(packetBuffer);
 }
 void setup() {
     //duck.enableAcks(true);
-    Wire.begin(OLED_SDA, OLED_SCL);
+    //Wire.begin(OLED_SDA, OLED_SCL);
     std::string deviceId("PAPADUCK");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
-    display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
-   // display = DuckDisplay::getInstance();
+    //display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
+   display = DuckDisplay::getInstance();
+   display->setupDisplay(duck.getType(), devId);
     // DuckDisplay instance is returned unconditionally, if there is no physical
     // display the functions will not do anything
-   // display->setupDisplay(duck.getType(), devId);
     // the default setup is equivalent to the above setup sequence
     duck.setupSerial(115200);
     //SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS_PIN);
-    duck.setupRadio(LORA_FREQ, LORA_CS_PIN, LORA_TXPOWER);
+    duck.setupRadio();
     duck.setDeviceId(devId);
     setup_wifi();
     duck.setupDns();
     configTime(0, 0, ntpServer,"time.nist.gov");
     duck.onReceiveDuckData(handleDuckData);
-
-   // client.begin("192.168.1.74",wifiClient);
-//    mqttClient.setServer(mqtt_server, 1883);
+    pinMode(37, INPUT);
+    //client.begin("192.168.1.74",wifiClient);
+    mqttClient.setServer(mqtt_server, 1883);
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
+    display->showDefaultScreen();
 
-    display.display();
 }
