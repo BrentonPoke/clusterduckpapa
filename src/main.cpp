@@ -251,7 +251,7 @@ void handleDuckData(std::vector<byte> packetBuffer) {
 }
 void setup() {
     //duck.enableAcks(true);
-    //Wire.begin(OLED_SDA, OLED_SCL);
+    //Wire.begin(CDPCFG_PIN_OLED_DATA, CDPCFG_PIN_OLED_CLOCK);
     std::string deviceId("PAPADUCK");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
