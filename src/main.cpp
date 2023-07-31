@@ -257,36 +257,6 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 }
 
 void handleDuckData(std::vector<byte> packetBuffer) {
-    auto packet = CdpPacket(packetBuffer);
-    auto packetSize = packetBuffer.size();
-    std::string sduid(packet.sduid.begin(), packet.sduid.end());
-    packet.data.shrink_to_fit();
-
-    uint32_t packet_data_crc = packet.dcrc;
-    uint32_t computed_data_crc = CRC32::calculate(packet.data.data(), packet.data.size());
-    Serial.printf("Packet_Data: %s \n",packet.data.data());
-    //Serial.printf("Computed_Data: %s \n",data_section.data());
-    Serial.printf("Packet_Data_CRC: %u \n",packet_data_crc);
-    Serial.printf("Computed_Data_CRC: %u \n",computed_data_crc);
-    Serial.println("[PAPI] got packet: " +
-                   convertToHex(packetBuffer.data(), packetBuffer.size()));
-    if (String(packet_data_crc) != String(computed_data_crc)) {
-        logerr("data crc mismatch: received: " + String(packet_data_crc) +
-               " calculated:" + String(computed_data_crc));
-        InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-        Point telemetry("Corrupt Duck Transmissions");
-        telemetry.addTag("DeviceID",sduid.c_str());
-        telemetry.addField("PacketSize",packetSize);
-        telemetry.addField("PayloadSize",packet.data.size());
-        telemetry.addField("Packet_Data_CRC",packet_data_crc);
-        telemetry.addField("Computed_Data_CRC",computed_data_crc);
-        if (!client.writePoint(telemetry)) {
-            Serial.println(client.getLastErrorMessage());
-        }
-        else {
-            Serial.println("InfluxDB write succeeded: ");
-        }
-    } else
         quackJson(packetBuffer);
 }
 void setup() {
