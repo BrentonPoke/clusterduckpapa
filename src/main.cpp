@@ -6,9 +6,31 @@
 #include <ctime>
 #include <arduino-timer.h>
 #include <string>
-#include <algorithm>
 #include <influx.h>
 #include <chrono>
+#ifdef ARDUINO_TBeam
+#include <DuckLogger.h>
+#define XPOWERS_CHIP_AXP192
+#include <XPowersLib.h>
+XPowersPMU PMU;
+Timer<>::handler_t heartbeat(Point* telemetry,InfluxDBClient* client, String deviceID, DuckDisplay* display) {
+        telemetry->clearFields();
+        telemetry->clearTags();
+        telemetry->addTag("device", deviceID);
+        telemetry->addField("battery", PMU.getBattVoltage());
+        telemetry->addField("percentage", PMU.getBatteryPercent());
+    if (!client->writePoint(*telemetry)) {
+        display->drawString(0, 60, "Heartbeat Failed");
+        display->sendBuffer();
+        logerr(client->getLastErrorMessage());
+    } else {
+        loginfo("InfluxDB write succeeded");
+        display->drawString(0, 60, "Heartbeat Success");
+        display->sendBuffer();
+    }
+
+};
+#endif
 //#include "unishox2.h"
 
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
@@ -31,7 +53,7 @@ auto timer = timer_create_default();
 //const char* ssid = "ASUS-X82U2.4";
 //const char* pass = "Lotus Born";
 const char* ssid = "CIT-IOT";
-const char* pass = "xup|VgbV4^i#E";
+const char* pass = ".P<N~FgCu0a/_";
 const char* mqtt_server = "35.7.120.10";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
@@ -92,10 +114,13 @@ void reconnect() {
     }
 }
 void loop() {
-    if (!mqttClient.connected()) {
-        reconnect();
-    }
-    mqttClient.loop();
+//    if (!mqttClient.connected()) {
+//        reconnect();
+//    }
+//    mqttClient.loop();
+#ifdef ARDUINO_TBeam
+        timer.in(300000, heartbeat(&telemetry, &client, duck.getName(), display));
+#endif
     duck.run();
 }
 
@@ -264,6 +289,17 @@ void setup() {
     std::string deviceId("PAPADUCK");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
+
+#ifdef ARDUINO_TBeam
+    bool result = PMU.begin(Wire, AXP192_SLAVE_ADDRESS, 21, 22);
+
+    if (!result) {
+        logdbg("PMU is not online...");
+    } else {
+        logdbg("PMU online");
+    }
+#endif
+
     display = DuckDisplay::getInstance();
     // DuckDisplay instance is returned unconditionally, if there is no physical
     // display the functions will not do anything
