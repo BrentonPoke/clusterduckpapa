@@ -291,7 +291,7 @@ void setup() {
         logdbg("PMU online");
     }
 
-    timer.every(300000, heartbeat);
+    timer.every(600000, heartbeat);
 
 #endif
 
