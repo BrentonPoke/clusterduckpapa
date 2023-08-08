@@ -8,29 +8,7 @@
 #include <string>
 #include <influx.h>
 #include <chrono>
-#ifdef ARDUINO_TBeam
-#include <DuckLogger.h>
-#define XPOWERS_CHIP_AXP192
-#include <XPowersLib.h>
-XPowersPMU PMU;
-Timer<>::handler_t heartbeat(Point* telemetry,InfluxDBClient* client, String deviceID, DuckDisplay* display) {
-        telemetry->clearFields();
-        telemetry->clearTags();
-        telemetry->addTag("device", deviceID);
-        telemetry->addField("battery", PMU.getBattVoltage());
-        telemetry->addField("percentage", PMU.getBatteryPercent());
-    if (!client->writePoint(*telemetry)) {
-        display->drawString(0, 60, "Heartbeat Failed");
-        display->sendBuffer();
-        logerr(client->getLastErrorMessage());
-    } else {
-        loginfo("InfluxDB write succeeded");
-        display->drawString(0, 60, "Heartbeat Success");
-        display->sendBuffer();
-    }
 
-};
-#endif
 //#include "unishox2.h"
 
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
@@ -50,10 +28,10 @@ InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKE
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
-//const char* ssid = "ASUS-X82U2.4";
-//const char* pass = "Lotus Born";
-const char* ssid = "CIT-IOT";
-const char* pass = ".P<N~FgCu0a/_";
+const char* ssid = "ASUS-X82U2.4";
+const char* pass = "Lotus Born";
+//const char* ssid = "CIT-IOT";
+//const char* pass = ".P<N~FgCu0a/_";
 const char* mqtt_server = "35.7.120.10";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
@@ -62,15 +40,31 @@ const char* ntpServer = "pool.ntp.org";
 WiFiClient wifiClient;
 PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
 
-
-/**
- * @brief Callback method invoked when a packet was received from the mesh
- *
- * @param packet data packet that contains the received message
- */
-
-
-void post();
+#ifdef ARDUINO_TBeam
+#include <DuckLogger.h>
+#define XPOWERS_CHIP_AXP192
+#include <XPowersLib.h>
+XPowersPMU PMU;
+bool heartbeat(void*) {
+    telemetry.clearFields();
+    telemetry.clearTags();
+    telemetry.addTag("DeviceID", "PAPADUCK");
+    telemetry.addField("voltage", PMU.getBattVoltage());
+    telemetry.addField("percentage", PMU.getBatteryPercent());
+    if (!client.writePoint(telemetry)) {
+        display->clearLine(0,60);
+        display->drawString(0, 60, "Heartbeat Failed");
+        display->sendBuffer();
+        logerr(client.getLastErrorMessage());
+    } else {
+        loginfo("InfluxDB write succeeded");
+        display->clearLine(0,60);
+        display->drawString(0, 60, "Heartbeat Success");
+        display->sendBuffer();
+    }
+    return true;
+}
+#endif
 
 /**
  * @brief Establish the connection to the wifi network the Papa Duck can reach
@@ -118,9 +112,7 @@ void loop() {
 //        reconnect();
 //    }
 //    mqttClient.loop();
-#ifdef ARDUINO_TBeam
-        timer.in(300000, heartbeat(&telemetry, &client, duck.getName(), display));
-#endif
+    timer.tick();
     duck.run();
 }
 
@@ -298,6 +290,9 @@ void setup() {
     } else {
         logdbg("PMU online");
     }
+
+    timer.every(300000, heartbeat);
+
 #endif
 
     display = DuckDisplay::getInstance();
