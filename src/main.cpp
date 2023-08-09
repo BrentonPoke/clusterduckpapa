@@ -22,7 +22,7 @@
 PapaDuck duck;
 //DuckDisplay* display = NULL;
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
-Point telemetry("Duck Transmissions");
+Point telemetry("TBeam Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
 //const char* ssid = "ASUS-X82U2.4";
@@ -286,7 +286,7 @@ void handleDuckData(std::vector<byte> packetBuffer) {
 }
 void setup() {
     //duck.enableAcks(true);
-    std::string deviceId("PAPADUCK");
+    std::string deviceId("TBEAM");
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
 
