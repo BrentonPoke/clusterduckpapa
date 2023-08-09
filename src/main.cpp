@@ -8,34 +8,33 @@
 #include <string>
 #include <influx.h>
 #include <chrono>
-
+#include <Adafruit_SSD1306.h>
 //#include "unishox2.h"
 
-#define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
-#define LORA_TXPOWER 20 // Transmit Power
-// LORA HELTEC PIN CONFIG
-#define LORA_CS_PIN 18
-#define LORA_DIO0_PIN 26
-#define LORA_DIO1_PIN -1 // unused
-#define LORA_RST_PIN 14
+#define OLED_RESET     -1
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define SCREEN_ADDRESS 0x3c
 
 
 
 // Use pre-built papa duck.
 PapaDuck duck;
-DuckDisplay* display = NULL;
+//DuckDisplay* display = NULL;
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* ssid = "ASUS-X82U2.4";
-const char* pass = "Lotus Born";
-//const char* ssid = "CIT-IOT";
-//const char* pass = ".P<N~FgCu0a/_";
+//const char* ssid = "ASUS-X82U2.4";
+//const char* pass = "Lotus Born";
+const char* ssid = "CIT-IOT";
+const char* pass = ".P<N~FgCu0a/_";
 const char* mqtt_server = "35.7.120.10";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 const char* ntpServer = "pool.ntp.org";
+
+
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
@@ -44,6 +43,7 @@ PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
 #include <DuckLogger.h>
 #define XPOWERS_CHIP_AXP192
 #include <XPowersLib.h>
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 XPowersPMU PMU;
 bool heartbeat(void*) {
     telemetry.clearFields();
@@ -52,15 +52,19 @@ bool heartbeat(void*) {
     telemetry.addField("voltage", PMU.getBattVoltage());
     telemetry.addField("percentage", PMU.getBatteryPercent());
     if (!client.writePoint(telemetry)) {
-        display->clearLine(0,60);
-        display->drawString(0, 60, "Heartbeat Failed");
-        display->sendBuffer();
+        display.println("Heartbeat Failed");
+        display.print("Voltage: ");
+        display.print(PMU.getBattVoltage());
+        display.println(" mV");
+        display.display();
         logerr(client.getLastErrorMessage());
     } else {
         loginfo("InfluxDB write succeeded");
-        display->clearLine(0,60);
-        display->drawString(0, 60, "Heartbeat Success");
-        display->sendBuffer();
+        display.print("Voltage: ");
+        display.print(PMU.getBattVoltage());
+        display.println(" mV");
+        display.println("Heartbeat Success");
+        display.display();
     }
     return true;
 }
@@ -204,12 +208,14 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["PayloadSize"] = payload.size();
     doc["ReceiveDelay"] = millis() - start;
     //doc["duckType"].set(packet.duckType);
-    display->clear();
-    display->drawString(0, 10, "New Message");
-    display->drawString(0, 20, sduid.c_str());
-    display->drawString(0, 30, muid.c_str());
-    display->drawString(0, 40, toTopicString(packet.topic).c_str());
-    display->sendBuffer();
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println("New Message");
+    display.println(sduid.c_str());
+    display.println(muid.c_str());
+    display.println(toTopicString(packet.topic).c_str());
+    display.display();
 
     String jsonstat;
     serializeJson(doc,jsonstat);
@@ -262,13 +268,13 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 //        Serial.print("InfluxDB write succeeded: ");
 //    }
     if (!client.writePoint(telemetry)) {
-        display->drawString(0, 60, "Write Failure");
-        display->sendBuffer();
+        display.println("Write Failure");
+        display.display();
         Serial.println(client.getLastErrorMessage());
     } else {
         Serial.println("InfluxDB write succeeded");
-        display->drawString(0, 60, "Write Success");
-        display->sendBuffer();
+        display.println("Write Success");
+        display.display();
     }
     // }
 }
@@ -295,25 +301,25 @@ void setup() {
 
 #endif
 
-    display = DuckDisplay::getInstance();
+    //display = DuckDisplay::getInstance();
     // DuckDisplay instance is returned unconditionally, if there is no physical
     // display the functions will not do anything
-    display->setupDisplay(duck.getType(), devId);
+    //display->setupDisplay(duck.getType(), devId);
     // the default setup is equivalent to the above setup sequence
     duck.setupSerial(115200);
-    duck.setupRadio(LORA_FREQ, LORA_CS_PIN, LORA_RST_PIN, LORA_DIO0_PIN,
-                    LORA_DIO1_PIN, LORA_TXPOWER);
+    duck.setupRadio();
     duck.setDeviceId(devId);
     setup_wifi();
     duck.setupDns();
     configTime(0, 0, ntpServer,"time.nist.gov");
     duck.onReceiveDuckData(handleDuckData);
 
+    pinMode(37, INPUT);
    // client.begin("192.168.1.74",wifiClient);
     //mqttClient.setServer(mqtt_server, 1883);
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
-
-    display->showDefaultScreen();
+    display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
+    display.display();
 }
