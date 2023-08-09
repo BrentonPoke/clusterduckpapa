@@ -59,7 +59,7 @@ bool heartbeat(void*) {
         display.display();
         logerr(client.getLastErrorMessage());
     } else {
-        loginfo("InfluxDB write succeeded");
+        loginfo("Heartbeat write succeeded");
         display.print("Voltage: ");
         display.print(PMU.getBattVoltage());
         display.println(" mV");
@@ -69,6 +69,8 @@ bool heartbeat(void*) {
     return true;
 }
 #endif
+
+String duckTypeToString(int duckType);
 
 /**
  * @brief Establish the connection to the wifi network the Papa Duck can reach
@@ -321,5 +323,33 @@ void setup() {
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
     display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
+
     display.display();
+    delay(3000);
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println("Clusterduck Protocol");
+    display.println("DT: "+duckTypeToString(duck.getType()));
+    display.println(String("v")+duckutils::getCDPVersion().c_str());
+    display.println("----------------");
+    display.println(String("ID: ")+deviceId.c_str());
+    display.display();
+}
+
+String duckTypeToString(int duckType) {
+    String duckTypeStr = "";
+    switch (duckType) {
+    case DuckType::PAPA:
+        duckTypeStr = "Papa";
+    case DuckType::LINK:
+        duckTypeStr = "Link";
+    case DuckType::DETECTOR:
+        duckTypeStr = "Detector";
+    case DuckType::MAMA:
+        duckTypeStr = "Mama";
+    default:
+        duckTypeStr = "Duck";
+    }
+    return duckTypeStr;
 }
