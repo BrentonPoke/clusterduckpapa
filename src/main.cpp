@@ -29,7 +29,7 @@ auto timer = timer_create_default();
 //const char* pass = "Lotus Born";
 const char* ssid = "CIT-IOT";
 const char* pass = ".P<N~FgCu0a/_";
-const char* mqtt_server = "35.7.120.10";
+//const char* mqtt_server = "35.7.120.10";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
 const char* ntpServer = "pool.ntp.org";
@@ -37,7 +37,7 @@ const char* ntpServer = "pool.ntp.org";
 
 
 WiFiClient wifiClient;
-PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
+//PubSubClient mqttClient(mqtt_server, 1883, wifiClient);
 
 #ifdef ARDUINO_TBeam
 #include <DuckLogger.h>
@@ -98,6 +98,7 @@ void callback(char* topic, byte* message, unsigned int length) {
  * @brief Periodically attempts to re-establish the MQTT connection
  *
  */
+ /*
 void reconnect() {
     while (!mqttClient.connected()) {
         Serial.print("[PAPI] Attempting MQTT connection...");
@@ -111,6 +112,7 @@ void reconnect() {
         }
     }
 }
+  */
 void loop() {
 //    if (!mqttClient.connected()) {
 //        reconnect();
