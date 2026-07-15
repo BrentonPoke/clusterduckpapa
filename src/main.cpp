@@ -5,7 +5,6 @@
 #include <WiFi.h>
 #include <arduino-timer.h>
 #include <string>
-#include <SPI.h>
 #include <Wire.h>
 #include <AdafruitDisplay.h>
 #include <influx.h>
@@ -25,7 +24,7 @@
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 // Use pre-built papa duck.
 PapaDuck duck("PAPADUCK");
-AdafruitDisplay screen(SCREEN_WIDTH, SCREEN_HEIGHT);
+AdafruitDisplay screen(SCREEN_WIDTH, SCREEN_HEIGHT,-1,DuckType::PAPA);
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
@@ -118,7 +117,7 @@ std::string toTopicString(byte topic) {
         case topics::alert:
             topicString = "alert";
             break;
-        case topics::location:
+        case topics::gps:
             topicString = "gps";
             break;
         case topics::health:
@@ -148,10 +147,9 @@ String convertToHex(byte* data, unsigned int size) {
  *
  * @param packet A Packet that contains the received message
  */
-void quackJson(const std::vector<uint8_t>& packetBuffer) {
+void quackJson(const CdpPacket& packet) {
     auto start = millis();
-    auto packetSize = packetBuffer.size();
-    CdpPacket packet = CdpPacket(packetBuffer);
+    size_t packetSize = sizeof(CdpPacket);
     JsonDocument doc;
     // Here we treat the internal payload of the CDP packet as a string
     // but this is mostly application dependent.
@@ -165,13 +163,13 @@ void quackJson(const std::vector<uint8_t>& packetBuffer) {
 
     std::string muid(packet.muid.begin(), packet.muid.end());
 
-    Serial.println("[PAPI] Packet Received:");
-    Serial.println("[PAPI] sduid:   " + String(sduid.c_str()));
-    Serial.println("[PAPI] dduid:   " + String(dduid.c_str()));
-    Serial.println("[PAPI] topic:   " + String(toTopicString(packet.topic).c_str()));
-    Serial.println("[PAPI] muid:    " + String(muid.c_str()));
-    Serial.println("[PAPI] data:    " + String(payload.c_str()));
-    Serial.println("[PAPI] duck:    " + String(packet.duckType));
+    loginfo_ln("[PAPI] Packet Received:");
+    loginfo_ln("[PAPI] sduid:   %s" , sduid.c_str());
+    loginfo_ln("[PAPI] dduid:   %s" , dduid.c_str());
+    loginfo_ln("[PAPI] topic:   %s" , toTopicString(packet.topic));
+    loginfo_ln("[PAPI] muid:    %s" , muid.c_str());
+    loginfo_ln("[PAPI] data:    %s" , payload.c_str());
+    loginfo_ln("[PAPI] duck:    %d" , DuckDisplay<AdafruitDisplay>::duckTypeToString(static_cast<DuckType>(packet.duckType)));
 
 
     //test of EMS ideas...
@@ -245,16 +243,13 @@ void quackJson(const std::vector<uint8_t>& packetBuffer) {
      }
 }
 
-void handleDuckData() {
-    std::vector<uint8_t> packetBuffer;
+void handleDuckData(CdpPacket packetBuffer) {
         quackJson(packetBuffer);
 }
 void setup() {
     //duck.enableAcks(true);
     //Wire.begin(OLED_SDA, OLED_SCL);
     std::string deviceId("PAPADUCK");
-    std::vector<byte> devId;
-    devId.insert(devId.end(), deviceId.begin(), deviceId.end());
     //display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
     // DuckDisplay instance is returned unconditionally, if there is no physical
     // display the functions will not do anything
@@ -269,7 +264,8 @@ void setup() {
     mqttClient.setServer(mqtt_server, 1883);
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
-    Serial.print("[PAPI] Setup OK!");
+    loginfo_ln("[PAPI] Setup OK!");
+    screen.launch();
     screen.showDefaultScreen();
 
 }
