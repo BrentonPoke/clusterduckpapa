@@ -24,7 +24,7 @@
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 // Use pre-built papa duck.
 PapaDuck duck("PAPADUCK");
-AdafruitDisplay screen(SCREEN_WIDTH, SCREEN_HEIGHT,-1,DuckType::PAPA);
+AdafruitDisplay screen(SCREEN_WIDTH, SCREEN_HEIGHT,CDPCFG_PIN_OLED_DATA,CDPCFG_PIN_OLED_CLOCK,SCREEN_ADDRESS,CDPCFG_PIN_OLED_RESET);
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
