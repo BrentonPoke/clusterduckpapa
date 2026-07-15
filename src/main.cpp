@@ -193,6 +193,7 @@ void quackJson(const CdpPacket& packet) {
     doc["ReceiveDelay"] = millis() - start;
     doc["duckType"]  = packet.duckType;
     screen.clear();
+    screen.display.setCursor(0, 0);
     screen.display.println("New Message");
     screen.display.println(sduid.c_str());
     screen.display.println(muid.c_str());
