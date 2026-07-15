@@ -1,5 +1,5 @@
 #include <CdpPacket.h>
-#include <PapaDuck.h>
+#include <Ducks/PapaDuck.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
@@ -7,7 +7,7 @@
 #include <string>
 #include <SPI.h>
 #include <Wire.h>
-//#include <Adafruit_SSD1306.h>
+#include <AdafruitDisplay.h>
 #include <influx.h>
 #include <chrono>
 #include <vector>
@@ -24,8 +24,8 @@
 
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RST);
 // Use pre-built papa duck.
-PapaDuck duck;
-DuckDisplay* display = NULL;
+PapaDuck duck("PAPADUCK");
+AdafruitDisplay screen(SCREEN_WIDTH, SCREEN_HEIGHT);
 InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
@@ -148,11 +148,11 @@ String convertToHex(byte* data, unsigned int size) {
  *
  * @param packet A Packet that contains the received message
  */
-void quackJson(const std::vector<byte>& packetBuffer) {
+void quackJson(const std::vector<uint8_t>& packetBuffer) {
     auto start = millis();
     auto packetSize = packetBuffer.size();
     CdpPacket packet = CdpPacket(packetBuffer);
-    DynamicJsonDocument doc(350);
+    JsonDocument doc;
     // Here we treat the internal payload of the CDP packet as a string
     // but this is mostly application dependent.
     // The parsingf here is optional. The Papa duck could simply decide to
@@ -176,7 +176,7 @@ void quackJson(const std::vector<byte>& packetBuffer) {
 
     //test of EMS ideas...
 
-    DynamicJsonDocument nestdoc(229);
+    JsonDocument nestdoc;
     //char decompress[229];
     Serial.printf("Payload: %s\n",payload.c_str());
     Serial.printf("Payload Size: %d\n", payload.size());
@@ -186,14 +186,13 @@ void quackJson(const std::vector<byte>& packetBuffer) {
     doc["PacketSize"] = packetSize;
     doc["PayloadSize"] = payload.size();
     doc["ReceiveDelay"] = millis() - start;
-    //doc["duckType"].set(packet.duckType);
-    display->clear();
-    display->setCursor(0, 0);
-    display->drawString(0,10,"New Message");
-    display->drawString(0,20,sduid.c_str());
-    display->drawString(0,30,muid.c_str());
-    display->drawString(0,40,toTopicString(packet.topic).c_str());
-    display->sendBuffer();
+    doc["duckType"]  = packet.duckType;
+    screen.clear();
+    screen.display.println("New Message");
+    screen.display.println(sduid.c_str());
+    screen.display.println(muid.c_str());
+    screen.display.println(toTopicString(packet.topic).c_str());
+    screen.display.display();
 
     String jsonstat;
     serializeJson(doc,jsonstat);
@@ -205,8 +204,8 @@ void quackJson(const std::vector<byte>& packetBuffer) {
         Serial.println(jsonstat.c_str());
         Serial.println("");
         Serial.println("[PAPIDUCK] Publish ok");
-        display->drawString(0,50,"Publish ok");
-        display->sendBuffer();
+        screen.display.println("Publish ok");
+        screen.display.display();
     } else {
 
 
@@ -235,18 +234,19 @@ void quackJson(const std::vector<byte>& packetBuffer) {
         telemetry.setTime(nano);
 
     if (!client.writePoint(telemetry)) {
-        display->drawString(0, 60, "Write Failure");
-        display->sendBuffer();
+        screen.display.println("Write Failure");
+        screen.display.display();
         Serial.println(client.getLastErrorMessage());
     } else {
         Serial.println("InfluxDB write succeeded");
-        display->drawString(0, 60, "Write Success");
-        display->sendBuffer();
+        screen.display.println("Write Success");
+        screen.display.display();
     }
      }
 }
 
-void handleDuckData(std::vector<byte> packetBuffer) {
+void handleDuckData() {
+    std::vector<uint8_t> packetBuffer;
         quackJson(packetBuffer);
 }
 void setup() {
@@ -256,17 +256,12 @@ void setup() {
     std::vector<byte> devId;
     devId.insert(devId.end(), deviceId.begin(), deviceId.end());
     //display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
-   display = DuckDisplay::getInstance();
-   display->setupDisplay(duck.getType(), devId);
     // DuckDisplay instance is returned unconditionally, if there is no physical
     // display the functions will not do anything
     // the default setup is equivalent to the above setup sequence
-    duck.setupSerial(115200);
+    duck.setupWithDefaults();
     //SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS_PIN);
-    duck.setupRadio();
-    duck.setDeviceId(devId);
     setup_wifi();
-    duck.setupDns();
     configTime(0, 0, ntpServer,"time.nist.gov");
     duck.onReceiveDuckData(handleDuckData);
     pinMode(37, INPUT);
@@ -275,6 +270,6 @@ void setup() {
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     Serial.print("[PAPI] Setup OK!");
-    display->showDefaultScreen();
+    screen.showDefaultScreen();
 
 }
