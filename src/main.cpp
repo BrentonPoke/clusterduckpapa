@@ -10,6 +10,7 @@
 #include <influx.h>
 #include <chrono>
 #include <vector>
+#include "logo.h"
 //#include "unishox2.h"
 
 #define LORA_FREQ 915.0 // Frequency Range. Set for US Region 915.0Mhz
@@ -206,10 +207,9 @@ void quackJson(const CdpPacket& packet) {
     Serial.println(jsonstat);
 
     if (mqttClient.publish(toTopicString(packet.topic).c_str(),jsonstat.c_str(), true)) {
-        Serial.println("[PAPIDUCK] Packet forwarded:");
-        Serial.println(jsonstat.c_str());
-        Serial.println("");
-        Serial.println("[PAPIDUCK] Publish ok");
+        loginfo_ln("[PAPIDUCK] Packet forwarded:");
+        loginfo_ln(jsonstat.c_str());
+        loginfo_ln("[PAPIDUCK] Publish ok");
         screen.display.println("Publish ok");
         screen.display.display();
     } else {
@@ -236,7 +236,7 @@ void quackJson(const CdpPacket& packet) {
         auto now = std::chrono::system_clock::now();
         auto duration = now.time_since_epoch();
         auto nano = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
-        Serial.printf("Time: %lld \n", nano);
+        logdbg_ln("Time: %lld \n", nano);
         telemetry.setTime(nano);
 
     if (!client.writePoint(telemetry)) {
@@ -255,15 +255,10 @@ void handleDuckData(CdpPacket packetBuffer) {
         quackJson(packetBuffer);
 }
 void setup() {
-    //duck.enableAcks(true);
     //Wire.begin(OLED_SDA, OLED_SCL);
     std::string deviceId("PAPADUCK");
-    //display.begin(SSD1306_SWITCHCAPVCC,SCREEN_ADDRESS);
-    // DuckDisplay instance is returned unconditionally, if there is no physical
-    // display the functions will not do anything
-    // the default setup is equivalent to the above setup sequence
+
     duck.setupWithDefaults();
-    //SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS_PIN);
     setup_wifi();
     configTime(0, 0, ntpServer,"time.nist.gov");
     duck.onReceiveDuckData(handleDuckData);
@@ -273,7 +268,9 @@ void setup() {
 //    mqttClient.setCallback(callback);
     //mqttClient.setKeepAlive(30);
     loginfo_ln("[PAPI] Setup OK!");
+    screen.setLogo(LOGO);
     screen.launch();
+    screen.showLogo(AdafruitDisplay::BITMAP,3000);
     screen.showDefaultScreen();
 
 }
