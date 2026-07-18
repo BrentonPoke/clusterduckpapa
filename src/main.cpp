@@ -70,16 +70,15 @@ void setup_wifi() {
         delay(WIFI_CONNECTION_DELAY_MS);
         Serial.print(".");
     }
-    Serial.println("");
-    Serial.println("[PAPI] WiFi connected");
-    Serial.println("[PAPI] IP address: "+WiFi.localIP().toString());
+
+    loginfo_ln("WiFi connected");
+    loginfo_ln("IP address: %s",WiFi.localIP().toString());
 }
 /**
  * @brief Invoked by the MQTT server when a message has been received
  */
 void callback(char* topic, byte* message, unsigned int length) {
-    Serial.print("[PAPI] Message arrived on topic: ");
-    Serial.print(topic);
+    logdbg_ln("[PAPI] Message arrived on topic: %s",topic);
 }
 /**
  * @brief Periodically attempts to re-establish the MQTT connection
@@ -98,12 +97,19 @@ void reconnect() {
         }
     }
 }
+bool runsleep(nullptr_t) {
+    loginfo_ln("Entering sleep mode");
+    screen.sleep();
+    return true;
+}
 void loop() {
+    timer.tick();
     if (!mqttClient.connected()) {
         reconnect();
     }
    mqttClient.loop();
     duck.run();
+
 }
 
 // DMS locator URL requires a topicString, so we need to convert the topic
@@ -253,11 +259,10 @@ void quackJson(CdpPacket& packet) {
 }
 
 void handleDuckData(CdpPacket packetBuffer) {
+    screen.wake();
         quackJson(packetBuffer);
 }
 void setup() {
-    //Wire.begin(OLED_SDA, OLED_SCL);
-    std::string deviceId("PAPADUCK");
 
     duck.setupWithDefaults();
     setup_wifi();
@@ -273,4 +278,5 @@ void setup() {
     screen.launch();
     screen.showLogo(AdafruitDisplay::BITMAP);
     screen.showDefaultScreen();
+    timer.every(30000, Timer<>::handler_t(runsleep));
 }
