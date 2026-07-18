@@ -155,7 +155,7 @@ String convertToHex(byte* data, unsigned int size) {
  *
  * @param packet A Packet that contains the received message
  */
-void quackJson(const CdpPacket& packet) {
+void quackJson(CdpPacket& packet) {
     auto start = millis();
     size_t packetSize = sizeof(CdpPacket);
     JsonDocument doc;
@@ -201,10 +201,10 @@ void quackJson(const CdpPacket& packet) {
     screen.display.println(toTopicString(packet.topic).c_str());
     screen.display.display();
 
-    String jsonstat;
+    std::string jsonstat;
     serializeJson(doc,jsonstat);
 
-    Serial.println(jsonstat);
+    logdbg_ln("JSON: %s", jsonstat.c_str());
 
     if (mqttClient.publish(toTopicString(packet.topic).c_str(),jsonstat.c_str(), true)) {
         loginfo_ln("[PAPIDUCK] Packet forwarded:");
@@ -242,13 +242,14 @@ void quackJson(const CdpPacket& packet) {
     if (!client.writePoint(telemetry)) {
         screen.display.println("Write Failure");
         screen.display.display();
-        Serial.println(client.getLastErrorMessage());
+        logerr_ln("Write failure. Message: %s",client.getLastErrorMessage());
     } else {
-        Serial.println("InfluxDB write succeeded");
+        loginfo_ln("InfluxDB write succeeded");
         screen.display.println("Write Success");
         screen.display.display();
     }
      }
+    screen.printPacketHeader(packet);
 }
 
 void handleDuckData(CdpPacket packetBuffer) {
@@ -270,7 +271,6 @@ void setup() {
     loginfo_ln("[PAPI] Setup OK!");
     screen.setLogo(LOGO);
     screen.launch();
-    screen.showLogo(AdafruitDisplay::BITMAP,3000);
+    screen.showLogo(AdafruitDisplay::BITMAP);
     screen.showDefaultScreen();
-
 }
