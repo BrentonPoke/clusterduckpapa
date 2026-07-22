@@ -37,8 +37,8 @@ InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKE
 Point telemetry("Duck Transmissions");
 // create a timer with default settings
 auto timer = timer_create_default();
-const char* ssid = "ASUS-X82U2.4";
-const char* pass = "Lotus Born";
+const char* ssid = std::getenv("WIFI_SSID");
+const char* pass = std::getenv("WIFI_PASS");
 const char* mqtt_server = "192.168.1.74";
 const int MQTT_CONNECTION_DELAY_MS = 5000;
 const int WIFI_CONNECTION_DELAY_MS = 500;
@@ -190,8 +190,8 @@ void quackJson(CdpPacket& packet) {
 
     JsonDocument nestdoc;
     //char decompress[229];
-    Serial.printf("Payload: %s\n",payload.c_str());
-    Serial.printf("Payload Size: %d\n", payload.size());
+    logdbg_ln("Payload: %s\n",payload.c_str());
+    logdbg_ln("Payload Size: %d\n", payload.size());
     //unishox2_decompress_simple(payload,int(payload.length()),decompress);
     deserializeJson(nestdoc, packet.data.data());
     doc["Payload"] = nestdoc;
